@@ -8,7 +8,7 @@ zabbix_export:
   - uuid: c2f84061d65e4bd5b0db25269fb117d4
     template: ADVA FSP150-GE114Pro by SNMP
     name: ADVA FSP150-GE114Pro by SNMP
-    description: "Monitors ADVA/Adtran FSP 150-GE114Pro carrier Ethernet\ndemarcation devices over SNMP.
+    description: "Monitors ADVA/Adtran FSP 150-GE114Pro carrier Ethernet\ndemarcation devices over SNMP."
     groups:
     - name: Templates/Net
     items:
