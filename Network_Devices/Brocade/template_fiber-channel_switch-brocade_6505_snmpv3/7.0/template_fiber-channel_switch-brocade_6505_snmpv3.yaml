@@ -1078,7 +1078,7 @@ zabbix_export:
         - uuid: 4119a22fc88e45c3aa3052d1b04a3746
           name: 'FC port traffic discovery'
           type: SNMP_AGENT
-          snmp_oid: 'discovery[{#FCSTATRX},1.3.6.1.3.94.4.5.1.7]'
+          snmp_oid: 'discovery[{#FCSTATRX},1.3.6.1.3.94.4.5.1.7,{#FCPORTNAME},1.3.6.1.3.94.1.10.1.17]'
           key: fcstat.discovery
           delay: 1h
           filter:
@@ -1105,7 +1105,11 @@ zabbix_export:
             Fabric OS port number: index 1 is port 0.
 
             This table has no administrative status column, so every port present in the switch is
-            discovered. Use {$FC.TRAFFIC.PORT.NOT_MATCHES} to drop ports that are not in use.
+            discovered. connUnitPortName (1.3.6.1.3.94.1.10.1.17) is read from connUnitPortTable,
+            which shares the same index. When a port has a configured name/description, it is appended
+            to {#FCPORTLABEL} and therefore appears in item, graph and problem names. Empty port names
+            leave the existing number-only label intact.
+            Use {$FC.TRAFFIC.PORT.NOT_MATCHES} to drop ports that are not in use.
           preprocessing:
             - type: JAVASCRIPT
               parameters:
@@ -1123,11 +1127,16 @@ zabbix_export:
                           throw 'Unexpected connUnitPortStat index: ' + row['{#SNMPINDEX}'];
                       }
                       row['{#FCPORTNUM}'] = String(port);
+                      row['{#FCPORTNAME}'] = String(row['{#FCPORTNAME}'] || '').replace(/^\s+|\s+$/g, '');
+                      row['{#FCPORTLABEL}'] = row['{#FCPORTNUM}'];
+                      if (row['{#FCPORTNAME}'] !== '' && row['{#FCPORTNAME}'] !== row['{#FCPORTNUM}']) {
+                          row['{#FCPORTLABEL}'] += ' ' + row['{#FCPORTNAME}'];
+                      }
                   }
                   return JSON.stringify(rows);
           item_prototypes:
             - uuid: be94f8b8703d48e499d2b6cde9b2ec1d
-              name: 'FC port {#FCPORTNUM}: Bits received'
+              name: 'FC port {#FCPORTLABEL}: Bits received'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.3.94.4.5.1.7.{#SNMPINDEX}]'
               key: 'fcstat.in[connUnitPortStatCountRxElements.{#FCPORTNUM}]'
@@ -1167,11 +1176,11 @@ zabbix_export:
                 - tag: component
                   value: network
                 - tag: interface
-                  value: 'port{#FCPORTNUM}'
+                  value: 'port{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
             - uuid: 575f5ac825f843feab2af08fbf699a36
-              name: 'FC port {#FCPORTNUM}: Bits sent'
+              name: 'FC port {#FCPORTLABEL}: Bits sent'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.3.94.4.5.1.6.{#SNMPINDEX}]'
               key: 'fcstat.out[connUnitPortStatCountTxElements.{#FCPORTNUM}]'
@@ -1203,11 +1212,11 @@ zabbix_export:
                 - tag: component
                   value: network
                 - tag: interface
-                  value: 'port{#FCPORTNUM}'
+                  value: 'port{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
             - uuid: 464277dd631244c79d7349a2c777e25c
-              name: 'FC port {#FCPORTNUM}: Speed'
+              name: 'FC port {#FCPORTLABEL}: Speed'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.3.94.1.10.1.15.{#SNMPINDEX}]'
               key: 'fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}]'
@@ -1245,7 +1254,7 @@ zabbix_export:
                 - tag: component
                   value: network
                 - tag: interface
-                  value: 'port{#FCPORTNUM}'
+                  value: 'port{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
           trigger_prototypes:
@@ -1258,8 +1267,8 @@ zabbix_export:
               recovery_expression: |
                 avg(/Brocade 6505 by SNMPv3/fcstat.in[connUnitPortStatCountRxElements.{#FCPORTNUM}],15m)<(({$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}-3)/100)*{$FC.SPEED.PAYLOAD.RATIO:"{#FCPORTNUM}"}*last(/Brocade 6505 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}]) and
                 avg(/Brocade 6505 by SNMPv3/fcstat.out[connUnitPortStatCountTxElements.{#FCPORTNUM}],15m)<(({$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}-3)/100)*{$FC.SPEED.PAYLOAD.RATIO:"{#FCPORTNUM}"}*last(/Brocade 6505 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}])
-              name: 'Brocade 6505: FC port {#FCPORTNUM}: High bandwidth usage'
-              event_name: 'Brocade 6505: FC port {#FCPORTNUM}: High bandwidth usage (>{$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}%)'
+              name: 'Brocade 6505: FC port {#FCPORTLABEL}: High bandwidth usage'
+              event_name: 'Brocade 6505: FC port {#FCPORTLABEL}: High bandwidth usage (>{$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}%)'
               opdata: 'In: {ITEM.LASTVALUE1}, out: {ITEM.LASTVALUE3}, speed: {ITEM.LASTVALUE2}'
               priority: WARNING
               description: |
@@ -1284,7 +1293,7 @@ zabbix_export:
                   value: performance
           graph_prototypes:
             - uuid: 7882bd30fa224d90a258a3f0fabd985b
-              name: 'FC port {#FCPORTNUM}: Bandwidth'
+              name: 'FC port {#FCPORTLABEL}: Bandwidth'
               graph_items:
                 - drawtype: GRADIENT_LINE
                   color: 199C0D

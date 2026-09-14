@@ -78,6 +78,8 @@ Bộ đếm là **octet 64-bit** trả về dạng OCTET STRING 8 byte (`00 04 3
 
 Bảng này đánh index bằng **WWN switch 16 byte + port index**, khác hoàn toàn `swFCPortIndex`, nên Zabbix không ghép chung một discovery rule được. Thành phần cuối của index bằng `swFCPortIndex` nên `{#FCPORTNUM}` = số cổng Fabric OS. Cả hai rule FC gắn tag `port: <số cổng>` để lọc chung.
 
+Rule cũng đọc `connUnitPortName` (`1.3.6.1.3.94.1.10.1.17`). Nếu cổng có name/description được cấu hình trên switch, nội dung đó được nối vào tên item, graph và Problem; ví dụ cổng `4` có tên `ESXi-01 HBA1` sẽ hiển thị thành `FC port 4 ESXi-01 HBA1`. Cổng không có tên vẫn chỉ hiển thị số cổng.
+
 `connUnitPortSpeed` trả về KB/s, item nhân `8000` để ra tốc độ tín hiệu đúng tên gọi chuẩn FC: `2000000` → **16 Gbps**, khớp cột speed của `switchshow`.
 
 `connUnitPortStatTable` **không có cột trạng thái quản trị**, nên mọi cổng của switch đều được discovery kể cả cổng chưa dùng. Lọc bằng `{$FC.TRAFFIC.PORT.NOT_MATCHES}`.

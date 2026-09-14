@@ -80,6 +80,8 @@ Bộ đếm là **octet 64-bit** trả về dạng OCTET STRING 8 byte (`00 04 3
 
 Bảng này đánh index bằng **WWN switch 16 byte + port index**, khác hoàn toàn `swFCPortIndex`, nên Zabbix không ghép chung một discovery rule được. Thành phần cuối của index bằng `swFCPortIndex` nên `{#FCPORTNUM}` = số cổng Fabric OS. Cả hai rule FC gắn tag `port: <số cổng>` để lọc chung.
 
+Rule cũng đọc `connUnitPortName` (`1.3.6.1.3.94.1.10.1.17`). Nếu cổng có name/description được cấu hình trên switch, nội dung đó được nối vào tên item, graph và Problem; ví dụ cổng `4` có tên `ESXi-01 HBA1` sẽ hiển thị thành `FC port 4 ESXi-01 HBA1`. Cổng không có tên vẫn chỉ hiển thị số cổng.
+
 `connUnitPortSpeed` trả về KB/s, item nhân `8000` để ra tốc độ tín hiệu đúng tên gọi chuẩn FC: `4000000` → **32 Gbps**, `2000000` → **16 Gbps**, khớp cột speed của `switchshow`. Trên Fabric OS v9.0.0a, cổng online trả tốc độ đã negotiate (cổng N16 trả `2000000`, các cổng N32 bên cạnh trả `4000000`); cổng không có link trả tốc độ tối đa `4000000`.
 
 `connUnitPortStatTable` **không có cột trạng thái quản trị**, nên rule lấy thêm `connUnitPortState` (`1.3.6.1.3.94.1.10.1.6`) từ `connUnitPortTable` — bảng dùng chung index — vào `{#FCPORTSTATE}`. G620 có 64 cổng (48 cổng SFP+ số 0–47 và 4 cổng QSFP mang các cổng 48–63), thường chỉ một phần được cấp license qua Ports on Demand.

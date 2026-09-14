@@ -78,6 +78,8 @@ The counters are **64-bit octet counters** returned as an 8-byte OCTET STRING (`
 
 This table is indexed by a **16-byte switch WWN followed by the port index**, which has nothing in common with `swFCPortIndex`, so Zabbix cannot combine it into a single discovery rule with the SW-MIB one. The last component of the index equals `swFCPortIndex`, so `{#FCPORTNUM}` is the Fabric OS port number. Both FC rules tag their items `port: <port number>` so they can be filtered together.
 
+The rule also reads `connUnitPortName` (`1.3.6.1.3.94.1.10.1.17`). If a port has a name/description configured on the switch, it is appended to the discovered item, graph and problem names; for example, port `4` named `ESXi-01 HBA1` is shown as `FC port 4 ESXi-01 HBA1`. An unnamed port keeps the number-only label.
+
 `connUnitPortSpeed` reports kilobytes per second; the item multiplies by `8000` to give the signalling rate the way Fibre Channel names it: `2000000` → **16 Gbps**, matching the speed column of `switchshow`.
 
 `connUnitPortStatTable` **has no administrative status column**, so every port of the switch is discovered, including unused ones. Filter with `{$FC.TRAFFIC.PORT.NOT_MATCHES}`.
