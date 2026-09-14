@@ -4,14 +4,22 @@ zabbix_export:
     - uuid: 36bff6c29af64692839d077febfc7079
       name: 'Templates/Network devices'
   templates:
-    - uuid: 90da62af7e154fe69112e633e1ce9b07
-      template: 'Brocade 6505 by SNMPv3'
-      name: 'Brocade 6505 by SNMPv3'
+    - uuid: 4dbf5e088b1441f4a191bca68bf357ce
+      template: 'Brocade G620 by SNMPv3'
+      name: 'Brocade G620 by SNMPv3'
       description: |
-        Brocade 6505 Fibre Channel switch monitoring for Zabbix 7.0.
-        Adapted from the official Zabbix Brocade FC by SNMP template.
+        Brocade G620 (Gen 6, 32GFC) Fibre Channel switch monitoring for Zabbix 7.0.
+        Adapted from the official Zabbix Brocade FC by SNMP template by way of the
+        Brocade 6505 by SNMPv3 template.
 
-        Tested against a Brocade 6505 running Fabric OS 8.0.2c, with Zabbix server 7.0.29.
+        Dell Connectrix DS-6620B: Dell sells the Brocade G620 as an OEM model under
+        this name. It is the same switch running Fabric OS, so this template can
+        also be used to monitor a Dell Connectrix DS-6620B.
+
+        OIDs verified with snmpwalk against a Dell Connectrix DS-6620B (Brocade G620,
+        switchType 183, sysObjectID 1.3.6.1.4.1.1588.2.1.1.1.183) running Fabric OS
+        v9.0.0a. The 6505 template it derives from was tested against a Brocade 6505
+        running Fabric OS 8.0.2c, with Zabbix server 7.0.29.
 
         MIBs: SW-MIB, FCMGMT-MIB (FA-MIB), IF-MIB, SNMPv2-MIB and HOST-RESOURCES-MIB.
         Monitors system health, CPU, memory, uptime, firmware, serial number,
@@ -41,7 +49,7 @@ zabbix_export:
       groups:
         - name: 'Templates/Network devices'
       items:
-        - uuid: 20559313284e4a08bc7b9f85b29864af
+        - uuid: 542358faf27b42b48c11c73723fb0164
           name: 'ICMP ping'
           type: SIMPLE
           key: icmpping
@@ -58,15 +66,15 @@ zabbix_export:
             - tag: component
               value: network
           triggers:
-            - uuid: 9430da2423164c7bb6f26fb22b744c04
-              expression: 'max(/Brocade 6505 by SNMPv3/icmpping,#3)=0'
-              name: 'Brocade 6505: Unavailable by ICMP ping'
+            - uuid: ea956eb358064f01a9fcbc599cf9fd64
+              expression: 'max(/Brocade G620 by SNMPv3/icmpping,#3)=0'
+              name: 'Brocade G620: Unavailable by ICMP ping'
               priority: HIGH
               description: 'Last three attempts returned timeout. Please check device connectivity.'
               tags:
                 - tag: scope
                   value: availability
-        - uuid: 1e5a9edffef04adcb33b55e783d890e0
+        - uuid: 8039ad540b1c4b38b1661aa09fbe4c78
           name: 'ICMP loss'
           type: SIMPLE
           key: icmppingloss
@@ -79,21 +87,21 @@ zabbix_export:
             - tag: component
               value: network
           triggers:
-            - uuid: 94156142d19345958ba3846a7c949804
-              expression: 'min(/Brocade 6505 by SNMPv3/icmppingloss,5m)>{$ICMP_LOSS_WARN} and min(/Brocade 6505 by SNMPv3/icmppingloss,5m)<100'
-              name: 'Brocade 6505: High ICMP ping loss'
+            - uuid: a8c1ba065f5048ddb90c1d557a450e60
+              expression: 'min(/Brocade G620 by SNMPv3/icmppingloss,5m)>{$ICMP_LOSS_WARN} and min(/Brocade G620 by SNMPv3/icmppingloss,5m)<100'
+              name: 'Brocade G620: High ICMP ping loss'
               opdata: 'Loss: {ITEM.LASTVALUE1}'
               priority: WARNING
               description: 'ICMP packets loss detected.'
               dependencies:
-                - name: 'Brocade 6505: Unavailable by ICMP ping'
-                  expression: 'max(/Brocade 6505 by SNMPv3/icmpping,#3)=0'
+                - name: 'Brocade G620: Unavailable by ICMP ping'
+                  expression: 'max(/Brocade G620 by SNMPv3/icmpping,#3)=0'
               tags:
                 - tag: scope
                   value: availability
                 - tag: scope
                   value: performance
-        - uuid: f1136d027d734e0ab6f9702f1dcf6799
+        - uuid: 6b3003f275754c2ea30370ecd81430e2
           name: 'ICMP response time'
           type: SIMPLE
           key: icmppingsec
@@ -106,23 +114,23 @@ zabbix_export:
             - tag: component
               value: network
           triggers:
-            - uuid: 5f83edc3d5004fe3bec8d42f08b639e6
-              expression: 'avg(/Brocade 6505 by SNMPv3/icmppingsec,5m)>{$ICMP_RESPONSE_TIME_WARN}'
-              name: 'Brocade 6505: High ICMP ping response time'
+            - uuid: e6d0f6d5c1d34c06a297e081871e5e56
+              expression: 'avg(/Brocade G620 by SNMPv3/icmppingsec,5m)>{$ICMP_RESPONSE_TIME_WARN}'
+              name: 'Brocade G620: High ICMP ping response time'
               opdata: 'Value: {ITEM.LASTVALUE1}'
               priority: WARNING
               description: 'Average ICMP response time is too high.'
               dependencies:
-                - name: 'Brocade 6505: High ICMP ping loss'
-                  expression: 'min(/Brocade 6505 by SNMPv3/icmppingloss,5m)>{$ICMP_LOSS_WARN} and min(/Brocade 6505 by SNMPv3/icmppingloss,5m)<100'
-                - name: 'Brocade 6505: Unavailable by ICMP ping'
-                  expression: 'max(/Brocade 6505 by SNMPv3/icmpping,#3)=0'
+                - name: 'Brocade G620: High ICMP ping loss'
+                  expression: 'min(/Brocade G620 by SNMPv3/icmppingloss,5m)>{$ICMP_LOSS_WARN} and min(/Brocade G620 by SNMPv3/icmppingloss,5m)<100'
+                - name: 'Brocade G620: Unavailable by ICMP ping'
+                  expression: 'max(/Brocade G620 by SNMPv3/icmpping,#3)=0'
               tags:
                 - tag: scope
                   value: availability
                 - tag: scope
                   value: performance
-        - uuid: 89ca0669c9cc40e1bc9fb3d76c71a680
+        - uuid: 41778c417b3649e085bc1a853254a871
           name: 'SNMP traps (fallback)'
           type: SNMP_TRAP
           key: snmptrap.fallback
@@ -132,7 +140,7 @@ zabbix_export:
           tags:
             - tag: component
               value: network
-        - uuid: dc7237b38f3c43f8a43fba4eb8b615b9
+        - uuid: 7f24f1213a3a47978d86ae652744f6a9
           name: 'System contact details'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.2.1.1.4.0]'
@@ -150,7 +158,7 @@ zabbix_export:
           tags:
             - tag: component
               value: system
-        - uuid: beac5c455f294bce8b941fc565024e01
+        - uuid: ea85adeb682f414f93cb6ae6e84df92a
           name: 'CPU utilization'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.26.1.0]'
@@ -164,17 +172,17 @@ zabbix_export:
             - tag: component
               value: cpu
           triggers:
-            - uuid: 4dd9e8b63dd44a35b89a7c29133a77cb
-              expression: 'min(/Brocade 6505 by SNMPv3/system.cpu.util[swCpuUsage.0],5m)>{$CPU.UTIL.CRIT}'
-              name: 'Brocade 6505: High CPU utilization'
-              event_name: 'Brocade 6505: High CPU utilization (over {$CPU.UTIL.CRIT}% for 5m)'
+            - uuid: 74b298d739934b8d8d79c5ada611cd18
+              expression: 'min(/Brocade G620 by SNMPv3/system.cpu.util[swCpuUsage.0],5m)>{$CPU.UTIL.CRIT}'
+              name: 'Brocade G620: High CPU utilization'
+              event_name: 'Brocade G620: High CPU utilization (over {$CPU.UTIL.CRIT}% for 5m)'
               opdata: 'Current utilization: {ITEM.LASTVALUE1}'
               priority: WARNING
               description: 'The CPU utilization is too high. The system might be slow to respond.'
               tags:
                 - tag: scope
                   value: performance
-        - uuid: 4253dbde22e540148ee138cb228c2596
+        - uuid: 016b26e0c4e2488da82ac5e4cfb41356
           name: 'System description'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.2.1.1.1.0]'
@@ -193,7 +201,7 @@ zabbix_export:
           tags:
             - tag: component
               value: system
-        - uuid: eb2535738240475891d357f43ef0ca4c
+        - uuid: 354009e197384f67b56708d68ff3a53e
           name: 'Firmware version'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.1.6.0]'
@@ -209,9 +217,9 @@ zabbix_export:
             - tag: component
               value: system
           triggers:
-            - uuid: b0e7ae3a33f64dfab3eb56e93ba8b3c1
-              expression: 'last(/Brocade 6505 by SNMPv3/system.hw.firmware,#1)<>last(/Brocade 6505 by SNMPv3/system.hw.firmware,#2) and length(last(/Brocade 6505 by SNMPv3/system.hw.firmware))>0'
-              name: 'Brocade 6505: Firmware has changed'
+            - uuid: 70f47831cac1431580596e43627aa267
+              expression: 'last(/Brocade G620 by SNMPv3/system.hw.firmware,#1)<>last(/Brocade G620 by SNMPv3/system.hw.firmware,#2) and length(last(/Brocade G620 by SNMPv3/system.hw.firmware))>0'
+              name: 'Brocade G620: Firmware has changed'
               opdata: 'Current value: {ITEM.LASTVALUE1}'
               priority: INFO
               description: 'Firmware version has changed. Acknowledge to close the problem manually.'
@@ -219,7 +227,7 @@ zabbix_export:
               tags:
                 - tag: scope
                   value: notice
-        - uuid: 6241076fc84a442e94d256374ebd439c
+        - uuid: e8a5ddb0e43a4a64a341adeb057c1a8f
           name: 'Factory serial number'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.1.10.0]'
@@ -236,17 +244,17 @@ zabbix_export:
             - tag: component
               value: system
           triggers:
-            - uuid: 286dad0790914b8298580c84e2cb6a00
-              expression: 'last(/Brocade 6505 by SNMPv3/system.hw.serialnumber,#1)<>last(/Brocade 6505 by SNMPv3/system.hw.serialnumber,#2) and length(last(/Brocade 6505 by SNMPv3/system.hw.serialnumber))>0'
-              name: 'Brocade 6505: Device has been replaced'
-              event_name: 'Brocade 6505: Device has been replaced (new serial number received)'
+            - uuid: b0618408e02b491380dcc86af79e1425
+              expression: 'last(/Brocade G620 by SNMPv3/system.hw.serialnumber,#1)<>last(/Brocade G620 by SNMPv3/system.hw.serialnumber,#2) and length(last(/Brocade G620 by SNMPv3/system.hw.serialnumber))>0'
+              name: 'Brocade G620: Device has been replaced'
+              event_name: 'Brocade G620: Device has been replaced (new serial number received)'
               priority: INFO
               description: 'Device serial number has changed. Acknowledge to close the problem manually.'
               manual_close: 'YES'
               tags:
                 - tag: scope
                   value: notice
-        - uuid: 126ced917efa40cc81e3b3b0ea04f297
+        - uuid: 9f88ac163616470495266f7e64f6e0d6
           name: 'Uptime (hardware)'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.2.1.25.1.1.0]'
@@ -283,7 +291,7 @@ zabbix_export:
           tags:
             - tag: component
               value: system
-        - uuid: 142bb53bb29f4128906980c298c17776
+        - uuid: 548e49c151934ced8c127a231c6d46b7
           name: 'System location'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.2.1.1.6.0]'
@@ -301,7 +309,7 @@ zabbix_export:
           tags:
             - tag: component
               value: system
-        - uuid: d057d4e486a740ea848593e97af75f23
+        - uuid: 108e058c3c90436686ad00aa0deb301f
           name: 'System name'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.2.1.1.5.0]'
@@ -320,10 +328,10 @@ zabbix_export:
             - tag: component
               value: system
           triggers:
-            - uuid: 7638115a1ee84f8f9767b52f16bcc5d5
-              expression: 'last(/Brocade 6505 by SNMPv3/system.name,#1)<>last(/Brocade 6505 by SNMPv3/system.name,#2) and length(last(/Brocade 6505 by SNMPv3/system.name))>0'
-              name: 'Brocade 6505: System name has changed'
-              event_name: 'Brocade 6505: System name has changed (new name: {ITEM.VALUE})'
+            - uuid: dacf20bc6fdf43bea2f6f0a9b8dbf1a7
+              expression: 'last(/Brocade G620 by SNMPv3/system.name,#1)<>last(/Brocade G620 by SNMPv3/system.name,#2) and length(last(/Brocade G620 by SNMPv3/system.name))>0'
+              name: 'Brocade G620: System name has changed'
+              event_name: 'Brocade G620: System name has changed (new name: {ITEM.VALUE})'
               priority: INFO
               description: 'The name of the system has changed. Acknowledge to close the problem manually.'
               manual_close: 'YES'
@@ -332,7 +340,7 @@ zabbix_export:
                   value: notice
                 - tag: scope
                   value: security
-        - uuid: 30f53fedaa6e4214a71c86f122649fd9
+        - uuid: 5bb071beb600492c865008b970b4c7a2
           name: 'Uptime (network)'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.2.1.1.3.0]'
@@ -356,7 +364,7 @@ zabbix_export:
           tags:
             - tag: component
               value: system
-        - uuid: b8bbbe73638246098568ce7da7803289
+        - uuid: c586ac0a771b4fb49b0666b435412190
           name: 'System object ID'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.2.1.1.2.0]'
@@ -373,7 +381,7 @@ zabbix_export:
           tags:
             - tag: component
               value: system
-        - uuid: 4387d3a47536424ca133e905c7d810df
+        - uuid: 30262bada24a450da230a6542582c155
           name: 'Overall system health status'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.1.7.0]'
@@ -393,9 +401,9 @@ zabbix_export:
             - tag: component
               value: system
           triggers:
-            - uuid: e49a926d662f4c729eed60d09a96046f
-              expression: 'count(/Brocade 6505 by SNMPv3/system.status[swOperStatus.0],#1,"eq","{$HEALTH_CRIT_STATUS}")=1'
-              name: 'Brocade 6505: System status is in critical state'
+            - uuid: 27844a5e09ab45ac8deff1908bcd15a0
+              expression: 'count(/Brocade G620 by SNMPv3/system.status[swOperStatus.0],#1,"eq","{$HEALTH_CRIT_STATUS}")=1'
+              name: 'Brocade G620: System status is in critical state'
               opdata: 'Current state: {ITEM.LASTVALUE1}'
               priority: HIGH
               description: 'Please check the device for errors'
@@ -404,21 +412,21 @@ zabbix_export:
                   value: availability
                 - tag: scope
                   value: performance
-            - uuid: 9e4eab4dcdd744bcafb9631bec2c4d69
-              expression: 'count(/Brocade 6505 by SNMPv3/system.status[swOperStatus.0],#1,"eq","{$HEALTH_WARN_STATUS:\"offline\"}")=1 or count(/Brocade 6505 by SNMPv3/system.status[swOperStatus.0],#1,"eq","{$HEALTH_WARN_STATUS:\"testing\"}")=1'
-              name: 'Brocade 6505: System status is in warning state'
+            - uuid: 071ec989ff5244afb5fd336b359955fb
+              expression: 'count(/Brocade G620 by SNMPv3/system.status[swOperStatus.0],#1,"eq","{$HEALTH_WARN_STATUS:\"offline\"}")=1 or count(/Brocade G620 by SNMPv3/system.status[swOperStatus.0],#1,"eq","{$HEALTH_WARN_STATUS:\"testing\"}")=1'
+              name: 'Brocade G620: System status is in warning state'
               opdata: 'Current state: {ITEM.LASTVALUE1}'
               priority: WARNING
               description: 'Please check the device for warnings'
               dependencies:
-                - name: 'Brocade 6505: System status is in critical state'
-                  expression: 'count(/Brocade 6505 by SNMPv3/system.status[swOperStatus.0],#1,"eq","{$HEALTH_CRIT_STATUS}")=1'
+                - name: 'Brocade G620: System status is in critical state'
+                  expression: 'count(/Brocade G620 by SNMPv3/system.status[swOperStatus.0],#1,"eq","{$HEALTH_CRIT_STATUS}")=1'
               tags:
                 - tag: scope
                   value: availability
                 - tag: scope
                   value: performance
-        - uuid: fba308e6b4c64d0fb3bb20fdba593e91
+        - uuid: 9a01a7f5b24b4b40b046ccc8aa9b230c
           name: 'Memory utilization'
           type: SNMP_AGENT
           snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.26.6.0]'
@@ -432,10 +440,10 @@ zabbix_export:
             - tag: component
               value: memory
           triggers:
-            - uuid: 7a2824d12160460d9dc6779640e820ec
-              expression: 'min(/Brocade 6505 by SNMPv3/vm.memory.util[swMemUsage.0],5m)>{$MEMORY.UTIL.MAX}'
-              name: 'Brocade 6505: High memory utilization'
-              event_name: 'Brocade 6505: High memory utilization (>{$MEMORY.UTIL.MAX}% for 5m)'
+            - uuid: 090e70d63ae9420285eaec39eda17779
+              expression: 'min(/Brocade G620 by SNMPv3/vm.memory.util[swMemUsage.0],5m)>{$MEMORY.UTIL.MAX}'
+              name: 'Brocade G620: High memory utilization'
+              event_name: 'Brocade G620: High memory utilization (>{$MEMORY.UTIL.MAX}% for 5m)'
               priority: AVERAGE
               description: 'The system is running out of free memory.'
               tags:
@@ -443,7 +451,7 @@ zabbix_export:
                   value: capacity
                 - tag: scope
                   value: performance
-        - uuid: 00d3464d53de40359033b4b4bb6a568b
+        - uuid: 2e89cc5ade6344c79aa10b905ac89cb4
           name: 'SNMP agent availability'
           type: INTERNAL
           key: 'zabbix[host,snmp,available]'
@@ -461,20 +469,20 @@ zabbix_export:
             - tag: component
               value: network
           triggers:
-            - uuid: 579f76aa1c4247b88c9f6595e0e06db3
-              expression: 'max(/Brocade 6505 by SNMPv3/zabbix[host,snmp,available],{$SNMP.TIMEOUT})=0'
-              name: 'Brocade 6505: No SNMP data collection'
+            - uuid: 7bcf547baa304990a31ddf4b82e3b83b
+              expression: 'max(/Brocade G620 by SNMPv3/zabbix[host,snmp,available],{$SNMP.TIMEOUT})=0'
+              name: 'Brocade G620: No SNMP data collection'
               opdata: 'Current state: {ITEM.LASTVALUE1}'
               priority: WARNING
               description: 'SNMP is not available for polling. Please check device connectivity and SNMP settings.'
               dependencies:
-                - name: 'Brocade 6505: Unavailable by ICMP ping'
-                  expression: 'max(/Brocade 6505 by SNMPv3/icmpping,#3)=0'
+                - name: 'Brocade G620: Unavailable by ICMP ping'
+                  expression: 'max(/Brocade G620 by SNMPv3/icmpping,#3)=0'
               tags:
                 - tag: scope
                   value: availability
       discovery_rules:
-        - uuid: 8e42237796e74c44bae5a0a078b1f0c9
+        - uuid: a64edcf7116b431e80cdc3b5e47c085a
           name: 'FAN Discovery'
           type: SNMP_AGENT
           snmp_oid: 'discovery[{#SNMPVALUE},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.1,{#SENSOR_TYPE},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.2,{#SENSOR_INFO},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.5,{#SENSOR_STATUS},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.3]'
@@ -509,7 +517,7 @@ zabbix_export:
                   }
                   return JSON.stringify(rows);
           item_prototypes:
-            - uuid: f69b9e5d1bd4471399f2a453489948c8
+            - uuid: ad426a30ca89412b8b73c832df731303
               name: '{#SENSOR_INFO}: Fan speed'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.1.22.1.4.{#SNMPINDEX}]'
@@ -523,7 +531,7 @@ zabbix_export:
               tags:
                 - tag: component
                   value: fan
-            - uuid: 7d2281e820ea473abb95443101203b87
+            - uuid: 6eb2f209b45f4afebb0b0e6bc3357de5
               name: '{#SENSOR_INFO}: Fan status'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.1.22.1.3.{#SNMPINDEX}]'
@@ -537,9 +545,9 @@ zabbix_export:
                 - tag: component
                   value: fan
               trigger_prototypes:
-                - uuid: 12874d0bd56d48eb95a0ff17ea971058
-                  expression: 'count(/Brocade 6505 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$FAN_CRIT_STATUS}")=1'
-                  name: 'Brocade 6505: {#SENSOR_INFO}: Fan is in critical state'
+                - uuid: 78a6547b786b4b7f91d22d2f86169ab7
+                  expression: 'count(/Brocade G620 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$FAN_CRIT_STATUS}")=1'
+                  name: 'Brocade G620: {#SENSOR_INFO}: Fan is in critical state'
                   opdata: 'Current state: {ITEM.LASTVALUE1}'
                   priority: AVERAGE
                   description: |
@@ -554,11 +562,11 @@ zabbix_export:
                       value: availability
                     - tag: scope
                       value: performance
-                - uuid: 2a6360ea11c04e09b961fe81d7b9166e
-                  expression: 'count(/Brocade 6505 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#1,"ne","{$FAN_OK_STATUS}")=1 and (last(/Brocade 6505 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#1)<>last(/Brocade 6505 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#2))'
+                - uuid: 3f7d306452d14b60a45e3ba0df6ccc37
+                  expression: 'count(/Brocade G620 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#1,"ne","{$FAN_OK_STATUS}")=1 and (last(/Brocade G620 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#1)<>last(/Brocade G620 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#2))'
                   recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'count(/Brocade 6505 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$FAN_OK_STATUS}")=1'
-                  name: 'Brocade 6505: {#SENSOR_INFO}: Fan is not in normal state'
+                  recovery_expression: 'count(/Brocade G620 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$FAN_OK_STATUS}")=1'
+                  name: 'Brocade G620: {#SENSOR_INFO}: Fan is not in normal state'
                   opdata: 'Current state: {ITEM.LASTVALUE1}'
                   priority: INFO
                   description: |
@@ -573,17 +581,19 @@ zabbix_export:
                     after the item is created.
                   manual_close: 'YES'
                   dependencies:
-                    - name: 'Brocade 6505: {#SENSOR_INFO}: Fan is in critical state'
-                      expression: 'count(/Brocade 6505 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$FAN_CRIT_STATUS}")=1'
+                    - name: 'Brocade G620: {#SENSOR_INFO}: Fan is in critical state'
+                      expression: 'count(/Brocade G620 by SNMPv3/sensor.fan.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$FAN_CRIT_STATUS}")=1'
                   tags:
                     - tag: scope
                       value: notice
-        - uuid: 2bf57fc58e8a47c187f3029cf145b38d
+        - uuid: a1f26b1091ed4e3eb0e0c636678f6c8d
           name: 'FC port discovery'
           type: SNMP_AGENT
           snmp_oid: 'discovery[{#FCPORTADMSTATUS},1.3.6.1.4.1.1588.2.1.1.1.6.2.1.5,{#FCPORTPHYSTATE},1.3.6.1.4.1.1588.2.1.1.1.6.2.1.3,{#FCPORTNAME},1.3.6.1.4.1.1588.2.1.1.1.6.2.1.36,{#FCPORTSPEC},1.3.6.1.4.1.1588.2.1.1.1.6.2.1.37]'
           key: fcport.discovery
           delay: 1h
+          lifetime: 30d
+          enabled_lifetime_type: DISABLE_NEVER
           filter:
             evaltype: AND
             conditions:
@@ -610,6 +620,11 @@ zabbix_export:
             {#SNMPINDEX} is swFCPortIndex and starts at 1, while the Fabric OS port number
             starts at 0, so swFCPortIndex 1 is port 0. {#FCPORTSPEC} carries the slot/port
             string reported by the switch and {#FCPORTNAME} the configured port name.
+
+            Fabric OS reports swFCPortAdmStatus offline(2) for enabled ports without light as well
+            as for disabled ones, so {$FC.PORT.ADMSTATUS.NOT_MATCHES} leaves out every port that is
+            not online at discovery time. A port that goes down afterwards keeps its items, because
+            "Disable lost resources" is set to Never; they are deleted after 30 days.
           preprocessing:
             - type: JAVASCRIPT
               parameters:
@@ -634,7 +649,7 @@ zabbix_export:
                   }
                   return JSON.stringify(rows);
           item_prototypes:
-            - uuid: bb0a1e1aa19f442ebf63c93c7dca6cfc
+            - uuid: f61d5a2d2f20451e91cea2341a41e663
               name: 'FC port {#FCPORTLABEL}: Bits received'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.12.{#SNMPINDEX}]'
@@ -653,8 +668,8 @@ zabbix_export:
                 firmware that still implements it. On Fabric OS 8.x and later use the 64-bit octet
                 counters of FCMGMT-MIB connUnitPortStatTable instead - see the README.
 
-                The counter is 32-bit: at 8GFC line rate it wraps in about 21 seconds and at 16GFC
-                in about 11 seconds. Zabbix drops the sample when a wrap is detected, so a fully loaded
+                The counter is 32-bit: at 8GFC line rate it wraps in about 21 seconds, at 16GFC
+                in about 11 seconds and at 32GFC in about 5 seconds. Zabbix drops the sample when a wrap is detected, so a fully loaded
                 port shows gaps.
               preprocessing:
                 - type: CHANGE_PER_SECOND
@@ -668,7 +683,7 @@ zabbix_export:
                   value: '{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: daee0c019a3b42a4b86f0c5ebb9e553a
+            - uuid: df9fa261c32f4fa29085b8bbe1fe0d66
               name: 'FC port {#FCPORTLABEL}: Bits sent'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.11.{#SNMPINDEX}]'
@@ -695,7 +710,7 @@ zabbix_export:
                   value: '{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: 33bcbf6c657c4a9e8b6c7c64a1d7700e
+            - uuid: 9935399058bb48c3a281cc21b20aaf66
               name: 'FC port {#FCPORTLABEL}: Frames received'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.14.{#SNMPINDEX}]'
@@ -718,7 +733,7 @@ zabbix_export:
                   value: '{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: 595895524ef94205816375e97136e42d
+            - uuid: 99535fd67e0647dcafe334ca5cb397ac
               name: 'FC port {#FCPORTLABEL}: Frames sent'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.13.{#SNMPINDEX}]'
@@ -738,7 +753,7 @@ zabbix_export:
                   value: '{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: be3fbc47ca604beeb0c80910d9a89981
+            - uuid: 9ddfdaf01c8e4e419c0f4d3b828a00a7
               name: 'FC port {#FCPORTLABEL}: Port type'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.39.{#SNMPINDEX}]'
@@ -763,7 +778,7 @@ zabbix_export:
                   value: '{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: d4013c5f56fc49a59299850755b37936
+            - uuid: 5cd1753a32e7491b9c10664bb38bdc13
               name: 'FC port {#FCPORTLABEL}: CRC errors'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.22.{#SNMPINDEX}]'
@@ -782,7 +797,7 @@ zabbix_export:
                   value: '{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: 74a24807288048feb9f6558edc6c5d99
+            - uuid: ce7872e5853e4bbab759b83601b8d5b3
               name: 'FC port {#FCPORTLABEL}: Encoding errors outside of frames'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.26.{#SNMPINDEX}]'
@@ -801,7 +816,7 @@ zabbix_export:
                   value: '{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: e340f05aeb7941928e2d92361a668484
+            - uuid: b462285f8d464b2d865dd936f0002f6b
               name: 'FC port {#FCPORTLABEL}: Class 3 frames discarded'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.28.{#SNMPINDEX}]'
@@ -821,7 +836,7 @@ zabbix_export:
                   value: '{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: 208aab4bd2654f48b99d088ae8786236
+            - uuid: 4256d1b568044999adaf4cce30696110
               name: 'FC port {#FCPORTLABEL}: Transmit credit shortage'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.20.{#SNMPINDEX}]'
@@ -840,7 +855,7 @@ zabbix_export:
                   value: '{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: 37151d1d284b4091899dee9d6667812d
+            - uuid: d536fb9ed89b415a992ecc091a328e4f
               name: 'FC port {#FCPORTLABEL}: Operational status'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.4.{#SNMPINDEX}]'
@@ -861,11 +876,11 @@ zabbix_export:
                 - tag: port
                   value: '{#FCPORTNUM}'
               trigger_prototypes:
-                - uuid: 53b68a29fb5d4b3a9f0c3ef1046fc05a
-                  expression: '{$FC.PORTCONTROL:"{#FCPORTLABEL}"}=1 and last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])<>1 and (last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#1)<>last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#2))'
+                - uuid: eefe2deb548f467aaa4449098bfc3e5d
+                  expression: '{$FC.PORTCONTROL:"{#FCPORTLABEL}"}=1 and last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])<>1 and (last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#1)<>last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#2))'
                   recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])=1 or {$FC.PORTCONTROL:"{#FCPORTLABEL}"}=0'
-                  name: 'Brocade 6505: FC port {#FCPORTLABEL}: Port is not online'
+                  recovery_expression: 'last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])=1 or {$FC.PORTCONTROL:"{#FCPORTLABEL}"}=0'
+                  name: 'Brocade G620: FC port {#FCPORTLABEL}: Port is not online'
                   opdata: 'Current state: {ITEM.LASTVALUE1}'
                   priority: AVERAGE
                   description: |
@@ -878,7 +893,7 @@ zabbix_export:
                   tags:
                     - tag: scope
                       value: availability
-            - uuid: d71be3d244bf4234b5ae3c04c4031076
+            - uuid: 26be6ed4994b4a69a3e7fb5c10d2468a
               name: 'FC port {#FCPORTLABEL}: Physical state'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.3.{#SNMPINDEX}]'
@@ -898,7 +913,7 @@ zabbix_export:
                   value: '{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: 66052933e8c34c7cb19f67bed953b41c
+            - uuid: 0323a3b9cb804bd08585733ddf011101
               name: 'FC port {#FCPORTLABEL}: Speed'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.6.2.1.35.{#SNMPINDEX}]'
@@ -936,7 +951,7 @@ zabbix_export:
                   value: '{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: 2858c21b214c4122890e393da5d726af
+            - uuid: dff4b5609ff543bea5124234e49a11c1
               name: 'FC port {#FCPORTLABEL}: Speed, nominal bitrate'
               type: DEPENDENT
               key: 'fcport.speed.bps[swFCPortSpeed.{#SNMPINDEX}]'
@@ -973,114 +988,116 @@ zabbix_export:
                 - tag: port
                   value: '{#FCPORTNUM}'
           trigger_prototypes:
-            - uuid: f6a4b0618e864ccfbc16c1913cab8a07
+            - uuid: 57f720a71d7440ed93c6376d474e441d
               expression: |
-                (avg(/Brocade 6505 by SNMPv3/fcport.in[swFCPortRxWords.{#SNMPINDEX}],15m)>({$FC.IF.UTIL.MAX:"{#FCPORTLABEL}"}/100)*last(/Brocade 6505 by SNMPv3/fcport.speed.bps[swFCPortSpeed.{#SNMPINDEX}]) or
-                avg(/Brocade 6505 by SNMPv3/fcport.out[swFCPortTxWords.{#SNMPINDEX}],15m)>({$FC.IF.UTIL.MAX:"{#FCPORTLABEL}"}/100)*last(/Brocade 6505 by SNMPv3/fcport.speed.bps[swFCPortSpeed.{#SNMPINDEX}])) and
-                last(/Brocade 6505 by SNMPv3/fcport.speed.bps[swFCPortSpeed.{#SNMPINDEX}])>0
+                (avg(/Brocade G620 by SNMPv3/fcport.in[swFCPortRxWords.{#SNMPINDEX}],15m)>({$FC.IF.UTIL.MAX:"{#FCPORTLABEL}"}/100)*last(/Brocade G620 by SNMPv3/fcport.speed.bps[swFCPortSpeed.{#SNMPINDEX}]) or
+                avg(/Brocade G620 by SNMPv3/fcport.out[swFCPortTxWords.{#SNMPINDEX}],15m)>({$FC.IF.UTIL.MAX:"{#FCPORTLABEL}"}/100)*last(/Brocade G620 by SNMPv3/fcport.speed.bps[swFCPortSpeed.{#SNMPINDEX}])) and
+                last(/Brocade G620 by SNMPv3/fcport.speed.bps[swFCPortSpeed.{#SNMPINDEX}])>0
               recovery_mode: RECOVERY_EXPRESSION
               recovery_expression: |
-                avg(/Brocade 6505 by SNMPv3/fcport.in[swFCPortRxWords.{#SNMPINDEX}],15m)<(({$FC.IF.UTIL.MAX:"{#FCPORTLABEL}"}-3)/100)*last(/Brocade 6505 by SNMPv3/fcport.speed.bps[swFCPortSpeed.{#SNMPINDEX}]) and
-                avg(/Brocade 6505 by SNMPv3/fcport.out[swFCPortTxWords.{#SNMPINDEX}],15m)<(({$FC.IF.UTIL.MAX:"{#FCPORTLABEL}"}-3)/100)*last(/Brocade 6505 by SNMPv3/fcport.speed.bps[swFCPortSpeed.{#SNMPINDEX}])
-              name: 'Brocade 6505: FC port {#FCPORTLABEL}: High bandwidth usage'
-              event_name: 'Brocade 6505: FC port {#FCPORTLABEL}: High bandwidth usage (>{$FC.IF.UTIL.MAX:"{#FCPORTLABEL}"}%)'
+                avg(/Brocade G620 by SNMPv3/fcport.in[swFCPortRxWords.{#SNMPINDEX}],15m)<(({$FC.IF.UTIL.MAX:"{#FCPORTLABEL}"}-3)/100)*last(/Brocade G620 by SNMPv3/fcport.speed.bps[swFCPortSpeed.{#SNMPINDEX}]) and
+                avg(/Brocade G620 by SNMPv3/fcport.out[swFCPortTxWords.{#SNMPINDEX}],15m)<(({$FC.IF.UTIL.MAX:"{#FCPORTLABEL}"}-3)/100)*last(/Brocade G620 by SNMPv3/fcport.speed.bps[swFCPortSpeed.{#SNMPINDEX}])
+              name: 'Brocade G620: FC port {#FCPORTLABEL}: High bandwidth usage'
+              event_name: 'Brocade G620: FC port {#FCPORTLABEL}: High bandwidth usage (>{$FC.IF.UTIL.MAX:"{#FCPORTLABEL}"}%)'
               opdata: 'In: {ITEM.LASTVALUE1}, out: {ITEM.LASTVALUE3}, speed: {ITEM.LASTVALUE2}'
               status: DISABLED
               priority: WARNING
               description: 'The port is close to the nominal bitrate of its negotiated speed. DISABLED together with the swFCPortRxWords/swFCPortTxWords items it reads: enable all three only on firmware that still implements those counters. It is also inactive when the switch reports auto-Negotiate or unknown speed.'
               manual_close: 'YES'
               dependencies:
-                - name: 'Brocade 6505: FC port {#FCPORTLABEL}: Port is not online'
-                  expression: '{$FC.PORTCONTROL:"{#FCPORTLABEL}"}=1 and last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])<>1 and (last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#1)<>last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#2))'
-                  recovery_expression: 'last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])=1 or {$FC.PORTCONTROL:"{#FCPORTLABEL}"}=0'
+                - name: 'Brocade G620: FC port {#FCPORTLABEL}: Port is not online'
+                  expression: '{$FC.PORTCONTROL:"{#FCPORTLABEL}"}=1 and last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])<>1 and (last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#1)<>last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#2))'
+                  recovery_expression: 'last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])=1 or {$FC.PORTCONTROL:"{#FCPORTLABEL}"}=0'
               tags:
                 - tag: scope
                   value: performance
-            - uuid: 2657debcce2d487b8cdad967906a92b5
+            - uuid: 9876ce587cea47cdaf15f7667078913e
               expression: |
-                min(/Brocade 6505 by SNMPv3/fcport.errors.crc[swFCPortRxCrcs.{#SNMPINDEX}],5m)>{$FC.IF.ERRORS.WARN:"{#FCPORTLABEL}"}
-                or min(/Brocade 6505 by SNMPv3/fcport.errors.encout[swFCPortRxEncOutFrs.{#SNMPINDEX}],5m)>{$FC.IF.ERRORS.WARN:"{#FCPORTLABEL}"}
+                min(/Brocade G620 by SNMPv3/fcport.errors.crc[swFCPortRxCrcs.{#SNMPINDEX}],5m)>{$FC.IF.ERRORS.WARN:"{#FCPORTLABEL}"}
+                or min(/Brocade G620 by SNMPv3/fcport.errors.encout[swFCPortRxEncOutFrs.{#SNMPINDEX}],5m)>{$FC.IF.ERRORS.WARN:"{#FCPORTLABEL}"}
               recovery_mode: RECOVERY_EXPRESSION
               recovery_expression: |
-                max(/Brocade 6505 by SNMPv3/fcport.errors.crc[swFCPortRxCrcs.{#SNMPINDEX}],5m)<{$FC.IF.ERRORS.WARN:"{#FCPORTLABEL}"}*0.8
-                and max(/Brocade 6505 by SNMPv3/fcport.errors.encout[swFCPortRxEncOutFrs.{#SNMPINDEX}],5m)<{$FC.IF.ERRORS.WARN:"{#FCPORTLABEL}"}*0.8
-              name: 'Brocade 6505: FC port {#FCPORTLABEL}: High error rate'
-              event_name: 'Brocade 6505: FC port {#FCPORTLABEL}: High error rate (>{$FC.IF.ERRORS.WARN:"{#FCPORTLABEL}"} for 5m)'
+                max(/Brocade G620 by SNMPv3/fcport.errors.crc[swFCPortRxCrcs.{#SNMPINDEX}],5m)<{$FC.IF.ERRORS.WARN:"{#FCPORTLABEL}"}*0.8
+                and max(/Brocade G620 by SNMPv3/fcport.errors.encout[swFCPortRxEncOutFrs.{#SNMPINDEX}],5m)<{$FC.IF.ERRORS.WARN:"{#FCPORTLABEL}"}*0.8
+              name: 'Brocade G620: FC port {#FCPORTLABEL}: High error rate'
+              event_name: 'Brocade G620: FC port {#FCPORTLABEL}: High error rate (>{$FC.IF.ERRORS.WARN:"{#FCPORTLABEL}"} for 5m)'
               opdata: 'CRC: {ITEM.LASTVALUE1}, encoding out: {ITEM.LASTVALUE2}'
               priority: WARNING
               description: 'CRC or encoding errors on the link. Check the cable, the SFP and the attached device. It recovers when both rates are below 80% of the `{$FC.IF.ERRORS.WARN:"{#FCPORTLABEL}"}` threshold.'
               manual_close: 'YES'
               dependencies:
-                - name: 'Brocade 6505: FC port {#FCPORTLABEL}: Port is not online'
-                  expression: '{$FC.PORTCONTROL:"{#FCPORTLABEL}"}=1 and last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])<>1 and (last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#1)<>last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#2))'
-                  recovery_expression: 'last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])=1 or {$FC.PORTCONTROL:"{#FCPORTLABEL}"}=0'
+                - name: 'Brocade G620: FC port {#FCPORTLABEL}: Port is not online'
+                  expression: '{$FC.PORTCONTROL:"{#FCPORTLABEL}"}=1 and last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])<>1 and (last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#1)<>last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#2))'
+                  recovery_expression: 'last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])=1 or {$FC.PORTCONTROL:"{#FCPORTLABEL}"}=0'
               tags:
                 - tag: scope
                   value: availability
                 - tag: scope
                   value: performance
-            - uuid: 115a5471d12a4acb891052333363498f
-              expression: 'min(/Brocade 6505 by SNMPv3/fcport.discards.c3[swFCPortC3Discards.{#SNMPINDEX}],5m)>{$FC.C3DISCARD.WARN:"{#FCPORTLABEL}"}'
+            - uuid: 35c89dc14a8847409a895f448f2f3174
+              expression: 'min(/Brocade G620 by SNMPv3/fcport.discards.c3[swFCPortC3Discards.{#SNMPINDEX}],5m)>{$FC.C3DISCARD.WARN:"{#FCPORTLABEL}"}'
               recovery_mode: RECOVERY_EXPRESSION
-              recovery_expression: 'max(/Brocade 6505 by SNMPv3/fcport.discards.c3[swFCPortC3Discards.{#SNMPINDEX}],5m)<{$FC.C3DISCARD.WARN:"{#FCPORTLABEL}"}*0.8'
-              name: 'Brocade 6505: FC port {#FCPORTLABEL}: Class 3 frames are being discarded'
-              event_name: 'Brocade 6505: FC port {#FCPORTLABEL}: Class 3 frames are being discarded (>{$FC.C3DISCARD.WARN:"{#FCPORTLABEL}"} for 5m)'
+              recovery_expression: 'max(/Brocade G620 by SNMPv3/fcport.discards.c3[swFCPortC3Discards.{#SNMPINDEX}],5m)<{$FC.C3DISCARD.WARN:"{#FCPORTLABEL}"}*0.8'
+              name: 'Brocade G620: FC port {#FCPORTLABEL}: Class 3 frames are being discarded'
+              event_name: 'Brocade G620: FC port {#FCPORTLABEL}: Class 3 frames are being discarded (>{$FC.C3DISCARD.WARN:"{#FCPORTLABEL}"} for 5m)'
               opdata: 'Discards: {ITEM.LASTVALUE1}'
               priority: WARNING
               description: 'Frames timed out before they could be transmitted. This is usually congestion or a slow drain device on this port.'
               manual_close: 'YES'
               dependencies:
-                - name: 'Brocade 6505: FC port {#FCPORTLABEL}: Port is not online'
-                  expression: '{$FC.PORTCONTROL:"{#FCPORTLABEL}"}=1 and last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])<>1 and (last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#1)<>last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#2))'
-                  recovery_expression: 'last(/Brocade 6505 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])=1 or {$FC.PORTCONTROL:"{#FCPORTLABEL}"}=0'
+                - name: 'Brocade G620: FC port {#FCPORTLABEL}: Port is not online'
+                  expression: '{$FC.PORTCONTROL:"{#FCPORTLABEL}"}=1 and last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])<>1 and (last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#1)<>last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}],#2))'
+                  recovery_expression: 'last(/Brocade G620 by SNMPv3/fcport.status[swFCPortOpStatus.{#SNMPINDEX}])=1 or {$FC.PORTCONTROL:"{#FCPORTLABEL}"}=0'
               tags:
                 - tag: scope
                   value: performance
           graph_prototypes:
-            - uuid: 48b2078ea09c4dcfb4284b8c8f3b2ca7
+            - uuid: 82919c3e44a446f5a072a34eafb0b26d
               name: 'FC port {#FCPORTLABEL}: Fibre Channel traffic'
               graph_items:
                 - drawtype: GRADIENT_LINE
                   color: 199C0D
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'fcport.in.frames[swFCPortRxFrames.{#SNMPINDEX}]'
                 - sortorder: '1'
                   drawtype: BOLD_LINE
                   color: F63100
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'fcport.out.frames[swFCPortTxFrames.{#SNMPINDEX}]'
                 - sortorder: '2'
                   color: F7941D
                   yaxisside: RIGHT
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'fcport.errors.crc[swFCPortRxCrcs.{#SNMPINDEX}]'
                 - sortorder: '3'
                   color: 00611C
                   yaxisside: RIGHT
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'fcport.errors.encout[swFCPortRxEncOutFrs.{#SNMPINDEX}]'
                 - sortorder: '4'
                   color: FC6EA3
                   yaxisside: RIGHT
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'fcport.discards.c3[swFCPortC3Discards.{#SNMPINDEX}]'
                 - sortorder: '5'
                   color: 6C59DC
                   yaxisside: RIGHT
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'fcport.notxcredits[swFCPortNoTxCredits.{#SNMPINDEX}]'
-        - uuid: 4119a22fc88e45c3aa3052d1b04a3746
+        - uuid: 5bb9f025427a45f09f6e9663a4d87023
           name: 'FC port traffic discovery'
           type: SNMP_AGENT
-          snmp_oid: 'discovery[{#FCSTATRX},1.3.6.1.3.94.4.5.1.7,{#FCPORTNAME},1.3.6.1.3.94.1.10.1.17]'
+          snmp_oid: 'discovery[{#FCSTATRX},1.3.6.1.3.94.4.5.1.7,{#FCPORTSTATE},1.3.6.1.3.94.1.10.1.6,{#FCPORTNAME},1.3.6.1.3.94.1.10.1.17]'
           key: fcstat.discovery
           delay: 1h
+          lifetime: 30d
+          enabled_lifetime_type: DISABLE_NEVER
           filter:
             evaltype: AND
             conditions:
@@ -1090,6 +1107,13 @@ zabbix_export:
               - macro: '{#FCPORTNUM}'
                 formulaid: B
                 value: '{$FC.TRAFFIC.PORT.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+              - macro: '{#FCPORTSTATE}'
+                formulaid: C
+                value: '{$FC.TRAFFIC.PORT.STATE.MATCHES}'
+              - macro: '{#FCPORTSTATE}'
+                formulaid: D
+                value: '{$FC.TRAFFIC.PORT.STATE.NOT_MATCHES}'
                 operator: NOT_MATCHES_REGEX
           description: |
             MIB: FCMGMT-MIB / FA-MIB, connUnitPortStatTable (1.3.6.1.3.94.4.5.1)
@@ -1104,12 +1128,22 @@ zabbix_export:
             component matches swFCPortIndex, so {#FCPORTNUM} is derived from it and equals the
             Fabric OS port number: index 1 is port 0.
 
-            This table has no administrative status column, so every port present in the switch is
-            discovered. connUnitPortName (1.3.6.1.3.94.1.10.1.17) is read from connUnitPortTable,
-            which shares the same index. When a port has a configured name/description, it is appended
-            to {#FCPORTLABEL} and therefore appears in item, graph and problem names. Empty port names
-            leave the existing number-only label intact.
-            Use {$FC.TRAFFIC.PORT.NOT_MATCHES} to drop ports that are not in use.
+            connUnitPortStatTable has no administrative status column, so the rule also pulls
+            connUnitPortState (1.3.6.1.3.94.1.10.1.6) from connUnitPortTable, which shares the same
+            index. FCMGMT-MIB describes it as the user selected state, but Fabric OS reports offline(3)
+            for every port that is not online: disabled ports, QSFP ports without a Ports on Demand
+            license and enabled ports with no light alike (verified on a G620 with Fabric OS v9.0.0a).
+            Ports matching {$FC.TRAFFIC.PORT.STATE.NOT_MATCHES}, offline(3) by default, are skipped,
+            so in practice the rule discovers the ports that are online. A port brought online later
+            is picked up by the next discovery run, with no macro to change.
+
+            A port that goes offline after being discovered keeps its items: "Disable lost resources"
+            is set to Never, so they keep polling, and they are deleted only after the port has been
+            missing from discovery for 30 days.
+            connUnitPortName (1.3.6.1.3.94.1.10.1.17) is read from that same table. When a port has a
+            configured name/description, it is appended to {#FCPORTLABEL} and therefore appears in
+            item, graph and problem names. Empty port names leave the existing number-only label intact.
+            Use {$FC.TRAFFIC.PORT.NOT_MATCHES} to drop further ports by number.
           preprocessing:
             - type: JAVASCRIPT
               parameters:
@@ -1121,6 +1155,7 @@ zabbix_export:
                   }
                   for (var i = 0; i < rows.length; i++) {
                       var row = rows[i];
+                      row['{#FCPORTSTATE}'] = row['{#FCPORTSTATE}'] || '';
                       var parts = String(row['{#SNMPINDEX}']).split('.');
                       var port = Number(parts[parts.length - 1]) - 1;
                       if (!isFinite(port) || port < 0) {
@@ -1135,7 +1170,7 @@ zabbix_export:
                   }
                   return JSON.stringify(rows);
           item_prototypes:
-            - uuid: be94f8b8703d48e499d2b6cde9b2ec1d
+            - uuid: 1b576768c58648b2b7d7a2486c6d6307
               name: 'FC port {#FCPORTLABEL}: Bits received'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.3.94.4.5.1.7.{#SNMPINDEX}]'
@@ -1179,7 +1214,7 @@ zabbix_export:
                   value: 'port{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: 575f5ac825f843feab2af08fbf699a36
+            - uuid: f5b475b61e984c76babd692da7646b10
               name: 'FC port {#FCPORTLABEL}: Bits sent'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.3.94.4.5.1.6.{#SNMPINDEX}]'
@@ -1215,7 +1250,7 @@ zabbix_export:
                   value: 'port{#FCPORTLABEL}'
                 - tag: port
                   value: '{#FCPORTNUM}'
-            - uuid: 464277dd631244c79d7349a2c777e25c
+            - uuid: 7dd801c90214479ea538134042075e11
               name: 'FC port {#FCPORTLABEL}: Speed'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.3.94.1.10.1.15.{#SNMPINDEX}]'
@@ -1239,10 +1274,10 @@ zabbix_export:
                 the traffic items count frame octets: 16 Gbps here means 12.8 Gbps of frame data,
                 the 1600 MB/s a 16GFC port moves in one direction.
 
-                VERIFY THIS: on some Fabric OS releases connUnitPortSpeed reports the maximum speed
-                the port supports rather than the speed it negotiated. Compare against switchshow,
-                which lists the real negotiated speed per port. If every port reports the same value
-                while switchshow shows mixed speeds, treat the utilization trigger as approximate.
+                On a G620 with Fabric OS v9.0.0a an online port reports its negotiated speed - a port
+                running at N16 returns 2000000 while its neighbours at N32 return 4000000 - and a port
+                without link reports the maximum, 4000000. Older releases may report the maximum for
+                every port; compare against switchshow if in doubt.
               preprocessing:
                 - type: MULTIPLIER
                   parameters:
@@ -1258,17 +1293,17 @@ zabbix_export:
                 - tag: port
                   value: '{#FCPORTNUM}'
           trigger_prototypes:
-            - uuid: cb2e7b3014e7454fa722b74248469e4e
+            - uuid: 5ca3ce0fa2b14e818682a5fd34eb69e0
               expression: |
-                (avg(/Brocade 6505 by SNMPv3/fcstat.in[connUnitPortStatCountRxElements.{#FCPORTNUM}],15m)>({$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}/100)*{$FC.SPEED.PAYLOAD.RATIO:"{#FCPORTNUM}"}*last(/Brocade 6505 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}]) or
-                avg(/Brocade 6505 by SNMPv3/fcstat.out[connUnitPortStatCountTxElements.{#FCPORTNUM}],15m)>({$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}/100)*{$FC.SPEED.PAYLOAD.RATIO:"{#FCPORTNUM}"}*last(/Brocade 6505 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}])) and
-                last(/Brocade 6505 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}])>0
+                (avg(/Brocade G620 by SNMPv3/fcstat.in[connUnitPortStatCountRxElements.{#FCPORTNUM}],15m)>({$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}/100)*{$FC.SPEED.PAYLOAD.RATIO:"{#FCPORTNUM}"}*last(/Brocade G620 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}]) or
+                avg(/Brocade G620 by SNMPv3/fcstat.out[connUnitPortStatCountTxElements.{#FCPORTNUM}],15m)>({$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}/100)*{$FC.SPEED.PAYLOAD.RATIO:"{#FCPORTNUM}"}*last(/Brocade G620 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}])) and
+                last(/Brocade G620 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}])>0
               recovery_mode: RECOVERY_EXPRESSION
               recovery_expression: |
-                avg(/Brocade 6505 by SNMPv3/fcstat.in[connUnitPortStatCountRxElements.{#FCPORTNUM}],15m)<(({$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}-3)/100)*{$FC.SPEED.PAYLOAD.RATIO:"{#FCPORTNUM}"}*last(/Brocade 6505 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}]) and
-                avg(/Brocade 6505 by SNMPv3/fcstat.out[connUnitPortStatCountTxElements.{#FCPORTNUM}],15m)<(({$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}-3)/100)*{$FC.SPEED.PAYLOAD.RATIO:"{#FCPORTNUM}"}*last(/Brocade 6505 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}])
-              name: 'Brocade 6505: FC port {#FCPORTLABEL}: High bandwidth usage'
-              event_name: 'Brocade 6505: FC port {#FCPORTLABEL}: High bandwidth usage (>{$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}%)'
+                avg(/Brocade G620 by SNMPv3/fcstat.in[connUnitPortStatCountRxElements.{#FCPORTNUM}],15m)<(({$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}-3)/100)*{$FC.SPEED.PAYLOAD.RATIO:"{#FCPORTNUM}"}*last(/Brocade G620 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}]) and
+                avg(/Brocade G620 by SNMPv3/fcstat.out[connUnitPortStatCountTxElements.{#FCPORTNUM}],15m)<(({$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}-3)/100)*{$FC.SPEED.PAYLOAD.RATIO:"{#FCPORTNUM}"}*last(/Brocade G620 by SNMPv3/fcstat.speed[connUnitPortSpeed.{#FCPORTNUM}])
+              name: 'Brocade G620: FC port {#FCPORTLABEL}: High bandwidth usage'
+              event_name: 'Brocade G620: FC port {#FCPORTLABEL}: High bandwidth usage (>{$FC.IF.UTIL.MAX:"{#FCPORTNUM}"}%)'
               opdata: 'In: {ITEM.LASTVALUE1}, out: {ITEM.LASTVALUE3}, speed: {ITEM.LASTVALUE2}'
               priority: WARNING
               description: |
@@ -1292,21 +1327,21 @@ zabbix_export:
                 - tag: scope
                   value: performance
           graph_prototypes:
-            - uuid: 7882bd30fa224d90a258a3f0fabd985b
+            - uuid: 521a65ef86194dfd88b71b1642868c97
               name: 'FC port {#FCPORTLABEL}: Bandwidth'
               graph_items:
                 - drawtype: GRADIENT_LINE
                   color: 199C0D
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'fcstat.in[connUnitPortStatCountRxElements.{#FCPORTNUM}]'
                 - sortorder: '1'
                   drawtype: BOLD_LINE
                   color: F63100
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'fcstat.out[connUnitPortStatCountTxElements.{#FCPORTNUM}]'
-        - uuid: 1d5db1e90fca4ecaad9f81b0856848bf
+        - uuid: 679ba6d5a8a14f6e9022efea2d34ae4a
           name: 'Network interfaces discovery'
           type: SNMP_AGENT
           snmp_oid: 'discovery[{#IFOPERSTATUS},1.3.6.1.2.1.2.2.1.8,{#IFADMINSTATUS},1.3.6.1.2.1.2.2.1.7,{#IFALIAS},1.3.6.1.2.1.31.1.1.1.18,{#IFNAME},1.3.6.1.2.1.31.1.1.1.1,{#IFDESCR},1.3.6.1.2.1.2.2.1.2,{#IFTYPE},1.3.6.1.2.1.2.2.1.3]'
@@ -1375,7 +1410,7 @@ zabbix_export:
                   }
                   return JSON.stringify(rows);
           item_prototypes:
-            - uuid: baefa244628d4376ad554d40f326b6d3
+            - uuid: 76aefdf01ed741fc86b7d6947c5c0ab9
               name: 'Interface {#IFNAME}({#IFALIAS}): Inbound packets discarded'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.2.1.2.2.1.13.{#SNMPINDEX}]'
@@ -1397,7 +1432,7 @@ zabbix_export:
                   value: '{#IFALIAS}'
                 - tag: interface
                   value: '{#IFNAME}'
-            - uuid: aa14ff15003b4b0498fb9b8f2b242b53
+            - uuid: 7b0f4732125f4c84b1a747f3927b768a
               name: 'Interface {#IFNAME}({#IFALIAS}): Inbound packets with errors'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.2.1.2.2.1.14.{#SNMPINDEX}]'
@@ -1415,7 +1450,7 @@ zabbix_export:
                   value: '{#IFALIAS}'
                 - tag: interface
                   value: '{#IFNAME}'
-            - uuid: aa443b0c63ff49cb88c34f4615e68976
+            - uuid: 1b7b076ac99d4673a06af148b7591f81
               name: 'Interface {#IFNAME}({#IFALIAS}): Bits received'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.2.1.31.1.1.1.6.{#SNMPINDEX}]'
@@ -1437,7 +1472,7 @@ zabbix_export:
                   value: '{#IFALIAS}'
                 - tag: interface
                   value: '{#IFNAME}'
-            - uuid: f550a5d7e2b245e8aaa8c2ae3fb15c26
+            - uuid: 7af6519db7324b6fb68669dbef4d0397
               name: 'Interface {#IFNAME}({#IFALIAS}): Outbound packets discarded'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.2.1.2.2.1.19.{#SNMPINDEX}]'
@@ -1459,7 +1494,7 @@ zabbix_export:
                   value: '{#IFALIAS}'
                 - tag: interface
                   value: '{#IFNAME}'
-            - uuid: 44033a1e7289432dbc3d072769059110
+            - uuid: 2271092ee6904b4ebea3ade7e5faa1e9
               name: 'Interface {#IFNAME}({#IFALIAS}): Outbound packets with errors'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.2.1.2.2.1.20.{#SNMPINDEX}]'
@@ -1477,7 +1512,7 @@ zabbix_export:
                   value: '{#IFALIAS}'
                 - tag: interface
                   value: '{#IFNAME}'
-            - uuid: 0a24da93590443538a48979ce8a2304a
+            - uuid: 267a30d9d2a74fe89a168f0b3cf8dacc
               name: 'Interface {#IFNAME}({#IFALIAS}): Bits sent'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.2.1.31.1.1.1.10.{#SNMPINDEX}]'
@@ -1499,7 +1534,7 @@ zabbix_export:
                   value: '{#IFALIAS}'
                 - tag: interface
                   value: '{#IFNAME}'
-            - uuid: c3c782a4a6474171ab7f275bf4d94d5a
+            - uuid: 6356644e5e4d4300b3843fb297e7f2b9
               name: 'Interface {#IFNAME}({#IFALIAS}): Speed'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.2.1.31.1.1.1.15.{#SNMPINDEX}]'
@@ -1524,7 +1559,7 @@ zabbix_export:
                   value: '{#IFALIAS}'
                 - tag: interface
                   value: '{#IFNAME}'
-            - uuid: 9244cefe497147758debf582daadc4bc
+            - uuid: 2f199b913ff348f69e6003f5250b90a1
               name: 'Interface {#IFNAME}({#IFALIAS}): Operational status'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.2.1.2.2.1.8.{#SNMPINDEX}]'
@@ -1549,11 +1584,11 @@ zabbix_export:
                 - tag: interface
                   value: '{#IFNAME}'
               trigger_prototypes:
-                - uuid: 3b4da8ea5fb64866bf4c8b766e63e397
-                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])=2 and (last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#1)<>last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#2))'
+                - uuid: fb3ffdacc7064528aa3bf2d8e064eaac
+                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])=2 and (last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#1)<>last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#2))'
                   recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
-                  name: 'Brocade 6505: Interface {#IFNAME}({#IFALIAS}): Link down'
+                  recovery_expression: 'last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
+                  name: 'Brocade G620: Interface {#IFNAME}({#IFALIAS}): Link down'
                   opdata: 'Current state: {ITEM.LASTVALUE1}'
                   priority: AVERAGE
                   description: |
@@ -1567,7 +1602,7 @@ zabbix_export:
                   tags:
                     - tag: scope
                       value: availability
-            - uuid: 784f7ac392fd432e8846eba63f89fc95
+            - uuid: 2e5f41b105a34c84acce8cc8a046cc70
               name: 'Interface {#IFNAME}({#IFALIAS}): Interface type'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.2.1.2.2.1.3.{#SNMPINDEX}]'
@@ -1593,120 +1628,120 @@ zabbix_export:
                 - tag: interface
                   value: '{#IFNAME}'
           trigger_prototypes:
-            - uuid: 2ba7862fa4fc452cb2f892c5fa60ec58
+            - uuid: f6241f899860463a8bad579826d5e81d
               expression: |
-                change(/Brocade 6505 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])<0 and last(/Brocade 6505 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])>0
+                change(/Brocade G620 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])<0 and last(/Brocade G620 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])>0
                 and (
-                last(/Brocade 6505 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=6 or
-                last(/Brocade 6505 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=7 or
-                last(/Brocade 6505 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=11 or
-                last(/Brocade 6505 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=62 or
-                last(/Brocade 6505 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=69 or
-                last(/Brocade 6505 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=117
+                last(/Brocade G620 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=6 or
+                last(/Brocade G620 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=7 or
+                last(/Brocade G620 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=11 or
+                last(/Brocade G620 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=62 or
+                last(/Brocade G620 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=69 or
+                last(/Brocade G620 by SNMPv3/net.if.type[ifType.{#SNMPINDEX}])=117
                 )
                 and
-                (last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])<>2)
+                (last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])<>2)
               recovery_mode: RECOVERY_EXPRESSION
               recovery_expression: |
-                (change(/Brocade 6505 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])>0 and last(/Brocade 6505 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}],#2)>0) or
-                (last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])=2)
-              name: 'Brocade 6505: Interface {#IFNAME}({#IFALIAS}): Ethernet has changed to lower speed than it was before'
+                (change(/Brocade G620 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])>0 and last(/Brocade G620 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}],#2)>0) or
+                (last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])=2)
+              name: 'Brocade G620: Interface {#IFNAME}({#IFALIAS}): Ethernet has changed to lower speed than it was before'
               opdata: 'Current reported speed: {ITEM.LASTVALUE1}'
               priority: INFO
               description: 'This Ethernet connection has transitioned down from its known maximum speed. This might be a sign of autonegotiation issues. Acknowledge to close the problem manually.'
               manual_close: 'YES'
               dependencies:
-                - name: 'Brocade 6505: Interface {#IFNAME}({#IFALIAS}): Link down'
-                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])=2 and (last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#1)<>last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#2))'
-                  recovery_expression: 'last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
+                - name: 'Brocade G620: Interface {#IFNAME}({#IFALIAS}): Link down'
+                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])=2 and (last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#1)<>last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#2))'
+                  recovery_expression: 'last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
               tags:
                 - tag: scope
                   value: performance
-            - uuid: 6fbc02c0d94243f5a50c3b64b4c51b55
+            - uuid: caa1617a732749e7ba3a391fc8320fe2
               expression: |
-                (avg(/Brocade 6505 by SNMPv3/net.if.in[ifHCInOctets.{#SNMPINDEX}],15m)>({$IF.UTIL.MAX:"{#IFNAME}"}/100)*last(/Brocade 6505 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}]) or
-                avg(/Brocade 6505 by SNMPv3/net.if.out[ifHCOutOctets.{#SNMPINDEX}],15m)>({$IF.UTIL.MAX:"{#IFNAME}"}/100)*last(/Brocade 6505 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])) and
-                last(/Brocade 6505 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])>0
+                (avg(/Brocade G620 by SNMPv3/net.if.in[ifHCInOctets.{#SNMPINDEX}],15m)>({$IF.UTIL.MAX:"{#IFNAME}"}/100)*last(/Brocade G620 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}]) or
+                avg(/Brocade G620 by SNMPv3/net.if.out[ifHCOutOctets.{#SNMPINDEX}],15m)>({$IF.UTIL.MAX:"{#IFNAME}"}/100)*last(/Brocade G620 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])) and
+                last(/Brocade G620 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])>0
               recovery_mode: RECOVERY_EXPRESSION
               recovery_expression: |
-                avg(/Brocade 6505 by SNMPv3/net.if.in[ifHCInOctets.{#SNMPINDEX}],15m)<(({$IF.UTIL.MAX:"{#IFNAME}"}-3)/100)*last(/Brocade 6505 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}]) and
-                avg(/Brocade 6505 by SNMPv3/net.if.out[ifHCOutOctets.{#SNMPINDEX}],15m)<(({$IF.UTIL.MAX:"{#IFNAME}"}-3)/100)*last(/Brocade 6505 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])
-              name: 'Brocade 6505: Interface {#IFNAME}({#IFALIAS}): High bandwidth usage'
-              event_name: 'Brocade 6505: Interface {#IFNAME}({#IFALIAS}): High bandwidth usage (>{$IF.UTIL.MAX:"{#IFNAME}"}%)'
+                avg(/Brocade G620 by SNMPv3/net.if.in[ifHCInOctets.{#SNMPINDEX}],15m)<(({$IF.UTIL.MAX:"{#IFNAME}"}-3)/100)*last(/Brocade G620 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}]) and
+                avg(/Brocade G620 by SNMPv3/net.if.out[ifHCOutOctets.{#SNMPINDEX}],15m)<(({$IF.UTIL.MAX:"{#IFNAME}"}-3)/100)*last(/Brocade G620 by SNMPv3/net.if.speed[ifHighSpeed.{#SNMPINDEX}])
+              name: 'Brocade G620: Interface {#IFNAME}({#IFALIAS}): High bandwidth usage'
+              event_name: 'Brocade G620: Interface {#IFNAME}({#IFALIAS}): High bandwidth usage (>{$IF.UTIL.MAX:"{#IFNAME}"}%)'
               opdata: 'In: {ITEM.LASTVALUE1}, out: {ITEM.LASTVALUE3}, speed: {ITEM.LASTVALUE2}'
               priority: WARNING
               description: 'The utilization of the network interface is close to its estimated maximum bandwidth.'
               manual_close: 'YES'
               dependencies:
-                - name: 'Brocade 6505: Interface {#IFNAME}({#IFALIAS}): Link down'
-                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])=2 and (last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#1)<>last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#2))'
-                  recovery_expression: 'last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
+                - name: 'Brocade G620: Interface {#IFNAME}({#IFALIAS}): Link down'
+                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])=2 and (last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#1)<>last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#2))'
+                  recovery_expression: 'last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
               tags:
                 - tag: scope
                   value: performance
-            - uuid: 10be93f3dea64e7d9e32c72793de3a41
+            - uuid: e87d82cf47ef430d927e8b88a546b91b
               expression: |
-                min(/Brocade 6505 by SNMPv3/net.if.in.errors[ifInErrors.{#SNMPINDEX}],5m)>{$IF.ERRORS.WARN:"{#IFNAME}"}
-                or min(/Brocade 6505 by SNMPv3/net.if.out.errors[ifOutErrors.{#SNMPINDEX}],5m)>{$IF.ERRORS.WARN:"{#IFNAME}"}
+                min(/Brocade G620 by SNMPv3/net.if.in.errors[ifInErrors.{#SNMPINDEX}],5m)>{$IF.ERRORS.WARN:"{#IFNAME}"}
+                or min(/Brocade G620 by SNMPv3/net.if.out.errors[ifOutErrors.{#SNMPINDEX}],5m)>{$IF.ERRORS.WARN:"{#IFNAME}"}
               recovery_mode: RECOVERY_EXPRESSION
               recovery_expression: |
-                max(/Brocade 6505 by SNMPv3/net.if.in.errors[ifInErrors.{#SNMPINDEX}],5m)<{$IF.ERRORS.WARN:"{#IFNAME}"}*0.8
-                and max(/Brocade 6505 by SNMPv3/net.if.out.errors[ifOutErrors.{#SNMPINDEX}],5m)<{$IF.ERRORS.WARN:"{#IFNAME}"}*0.8
-              name: 'Brocade 6505: Interface {#IFNAME}({#IFALIAS}): High error rate'
-              event_name: 'Brocade 6505: Interface {#IFNAME}({#IFALIAS}): High error rate (>{$IF.ERRORS.WARN:"{#IFNAME}"} for 5m)'
+                max(/Brocade G620 by SNMPv3/net.if.in.errors[ifInErrors.{#SNMPINDEX}],5m)<{$IF.ERRORS.WARN:"{#IFNAME}"}*0.8
+                and max(/Brocade G620 by SNMPv3/net.if.out.errors[ifOutErrors.{#SNMPINDEX}],5m)<{$IF.ERRORS.WARN:"{#IFNAME}"}*0.8
+              name: 'Brocade G620: Interface {#IFNAME}({#IFALIAS}): High error rate'
+              event_name: 'Brocade G620: Interface {#IFNAME}({#IFALIAS}): High error rate (>{$IF.ERRORS.WARN:"{#IFNAME}"} for 5m)'
               opdata: 'errors in: {ITEM.LASTVALUE1}, errors out: {ITEM.LASTVALUE2}'
               priority: WARNING
               description: 'It recovers when it is below 80% of the `{$IF.ERRORS.WARN:"{#IFNAME}"}` threshold.'
               manual_close: 'YES'
               dependencies:
-                - name: 'Brocade 6505: Interface {#IFNAME}({#IFALIAS}): Link down'
-                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])=2 and (last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#1)<>last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#2))'
-                  recovery_expression: 'last(/Brocade 6505 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
+                - name: 'Brocade G620: Interface {#IFNAME}({#IFALIAS}): Link down'
+                  expression: '{$IFCONTROL:"{#IFNAME}"}=1 and last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])=2 and (last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#1)<>last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}],#2))'
+                  recovery_expression: 'last(/Brocade G620 by SNMPv3/net.if.status[ifOperStatus.{#SNMPINDEX}])<>2 or {$IFCONTROL:"{#IFNAME}"}=0'
               tags:
                 - tag: scope
                   value: availability
                 - tag: scope
                   value: performance
           graph_prototypes:
-            - uuid: c1098bb0b3194b8a96b4adbddb3484c5
+            - uuid: 4caf8995642f4d2f9ec926d0d8b8dec9
               name: 'Interface {#IFNAME}({#IFALIAS}): Network traffic'
               graph_items:
                 - drawtype: GRADIENT_LINE
                   color: 199C0D
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'net.if.in[ifHCInOctets.{#SNMPINDEX}]'
                 - sortorder: '1'
                   drawtype: BOLD_LINE
                   color: F63100
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'net.if.out[ifHCOutOctets.{#SNMPINDEX}]'
                 - sortorder: '2'
                   color: 00611C
                   yaxisside: RIGHT
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'net.if.out.errors[ifOutErrors.{#SNMPINDEX}]'
                 - sortorder: '3'
                   color: F7941D
                   yaxisside: RIGHT
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'net.if.in.errors[ifInErrors.{#SNMPINDEX}]'
                 - sortorder: '4'
                   color: FC6EA3
                   yaxisside: RIGHT
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'net.if.out.discards[ifOutDiscards.{#SNMPINDEX}]'
                 - sortorder: '5'
                   color: 6C59DC
                   yaxisside: RIGHT
                   item:
-                    host: 'Brocade 6505 by SNMPv3'
+                    host: 'Brocade G620 by SNMPv3'
                     key: 'net.if.in.discards[ifInDiscards.{#SNMPINDEX}]'
-        - uuid: d843af14957144adb09a8ae4ea291550
+        - uuid: 5478f6356cdf4579bc07cf0f24e80d9d
           name: 'PSU Discovery'
           type: SNMP_AGENT
           snmp_oid: 'discovery[{#SNMPVALUE},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.1,{#SENSOR_TYPE},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.2,{#SENSOR_INFO},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.5,{#SENSOR_STATUS},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.3]'
@@ -1741,7 +1776,7 @@ zabbix_export:
                   }
                   return JSON.stringify(rows);
           item_prototypes:
-            - uuid: 16189d17d3a0488b920f13a7f92ce429
+            - uuid: 99796f81895d40ebbae026e0a5ea0f01
               name: '{#SENSOR_INFO}: Power supply status'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.1.22.1.3.{#SNMPINDEX}]'
@@ -1755,9 +1790,9 @@ zabbix_export:
                 - tag: component
                   value: power
               trigger_prototypes:
-                - uuid: 8b33039bd718404ebcf26df02d573ffa
-                  expression: 'count(/Brocade 6505 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$PSU_CRIT_STATUS}")=1'
-                  name: 'Brocade 6505: {#SENSOR_INFO}: Power supply is in critical state'
+                - uuid: 2c2798d5eec0492b935f198b07061a5f
+                  expression: 'count(/Brocade G620 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$PSU_CRIT_STATUS}")=1'
+                  name: 'Brocade G620: {#SENSOR_INFO}: Power supply is in critical state'
                   opdata: 'Current state: {ITEM.LASTVALUE1}'
                   priority: AVERAGE
                   description: |
@@ -1772,11 +1807,11 @@ zabbix_export:
                       value: availability
                     - tag: scope
                       value: performance
-                - uuid: 70997034aee1477bbc464bbaa5cdd71e
-                  expression: 'count(/Brocade 6505 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#1,"ne","{$PSU_OK_STATUS}")=1 and (last(/Brocade 6505 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#1)<>last(/Brocade 6505 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#2))'
+                - uuid: 919d2c637a2645268f7ce96380fe1120
+                  expression: 'count(/Brocade G620 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#1,"ne","{$PSU_OK_STATUS}")=1 and (last(/Brocade G620 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#1)<>last(/Brocade G620 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#2))'
                   recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'count(/Brocade 6505 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$PSU_OK_STATUS}")=1'
-                  name: 'Brocade 6505: {#SENSOR_INFO}: Power supply is not in normal state'
+                  recovery_expression: 'count(/Brocade G620 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$PSU_OK_STATUS}")=1'
+                  name: 'Brocade G620: {#SENSOR_INFO}: Power supply is not in normal state'
                   opdata: 'Current state: {ITEM.LASTVALUE1}'
                   priority: INFO
                   description: |
@@ -1791,12 +1826,12 @@ zabbix_export:
                     after the item is created.
                   manual_close: 'YES'
                   dependencies:
-                    - name: 'Brocade 6505: {#SENSOR_INFO}: Power supply is in critical state'
-                      expression: 'count(/Brocade 6505 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$PSU_CRIT_STATUS}")=1'
+                    - name: 'Brocade G620: {#SENSOR_INFO}: Power supply is in critical state'
+                      expression: 'count(/Brocade G620 by SNMPv3/sensor.psu.status[swSensorStatus.{#SNMPINDEX}],#1,"eq","{$PSU_CRIT_STATUS}")=1'
                   tags:
                     - tag: scope
                       value: notice
-        - uuid: bc3ef08b1aff475dad76a5ece035aa9a
+        - uuid: 901500562de24e65bd3d2239ab824424
           name: 'Temperature Discovery'
           type: SNMP_AGENT
           snmp_oid: 'discovery[{#SNMPVALUE},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.1,{#SENSOR_TYPE},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.2,{#SENSOR_INFO},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.5,{#SENSOR_STATUS},1.3.6.1.4.1.1588.2.1.1.1.1.22.1.3]'
@@ -1830,7 +1865,7 @@ zabbix_export:
                   }
                   return JSON.stringify(rows);
           item_prototypes:
-            - uuid: 932aa9ff30ba423390a40846c8c83333
+            - uuid: 65fc804b85e247afae382a8d21b39e24
               name: '{#SENSOR_INFO}: Temperature status'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.1.22.1.3.{#SNMPINDEX}]'
@@ -1845,7 +1880,7 @@ zabbix_export:
               tags:
                 - tag: component
                   value: temperature
-            - uuid: dd2a941c11b1446cba66a6706d20604e
+            - uuid: 6d04f4f5d7b84b8cb1fb9629f96e4b46
               name: '{#SENSOR_INFO}: Temperature'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.4.1.1588.2.1.1.1.1.22.1.4.{#SNMPINDEX}]'
@@ -1860,12 +1895,12 @@ zabbix_export:
                 - tag: component
                   value: temperature
               trigger_prototypes:
-                - uuid: ce3f975c53494991955050eb3291494a
-                  expression: 'avg(/Brocade 6505 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)>{$TEMP_CRIT:"{#SENSOR_INFO}"}'
+                - uuid: c96969f3f044420b99f4be8a1ef5041d
+                  expression: 'avg(/Brocade G620 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)>{$TEMP_CRIT:"{#SENSOR_INFO}"}'
                   recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'max(/Brocade 6505 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)<{$TEMP_CRIT:"{#SENSOR_INFO}"}-3'
-                  name: 'Brocade 6505: {#SENSOR_INFO}: Temperature is above critical threshold'
-                  event_name: 'Brocade 6505: {#SENSOR_INFO}: Temperature is above critical threshold: >{$TEMP_CRIT:"{#SENSOR_INFO}"}'
+                  recovery_expression: 'max(/Brocade G620 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)<{$TEMP_CRIT:"{#SENSOR_INFO}"}-3'
+                  name: 'Brocade G620: {#SENSOR_INFO}: Temperature is above critical threshold'
+                  event_name: 'Brocade G620: {#SENSOR_INFO}: Temperature is above critical threshold: >{$TEMP_CRIT:"{#SENSOR_INFO}"}'
                   opdata: 'Current value: {ITEM.LASTVALUE1}'
                   priority: HIGH
                   description: 'This trigger uses temperature sensor values as well as temperature sensor status if available'
@@ -1874,12 +1909,12 @@ zabbix_export:
                       value: availability
                     - tag: scope
                       value: performance
-                - uuid: 5edb9c59bf48443191c934f2ea223272
-                  expression: 'avg(/Brocade 6505 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)<{$TEMP_CRIT_LOW:"{#SENSOR_INFO}"}'
+                - uuid: 2e163a87011a460baadc8382e9ba53dc
+                  expression: 'avg(/Brocade G620 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)<{$TEMP_CRIT_LOW:"{#SENSOR_INFO}"}'
                   recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'min(/Brocade 6505 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)>{$TEMP_CRIT_LOW:"{#SENSOR_INFO}"}+3'
-                  name: 'Brocade 6505: {#SENSOR_INFO}: Temperature is too low'
-                  event_name: 'Brocade 6505: {#SENSOR_INFO}: Temperature is too low: <{$TEMP_CRIT_LOW:"{#SENSOR_INFO}"}'
+                  recovery_expression: 'min(/Brocade G620 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)>{$TEMP_CRIT_LOW:"{#SENSOR_INFO}"}+3'
+                  name: 'Brocade G620: {#SENSOR_INFO}: Temperature is too low'
+                  event_name: 'Brocade G620: {#SENSOR_INFO}: Temperature is too low: <{$TEMP_CRIT_LOW:"{#SENSOR_INFO}"}'
                   opdata: 'Current value: {ITEM.LASTVALUE1}'
                   priority: AVERAGE
                   tags:
@@ -1888,22 +1923,22 @@ zabbix_export:
                     - tag: scope
                       value: performance
           trigger_prototypes:
-            - uuid: 943a81a4d4b84a749661f41f3185ca2f
+            - uuid: 379b63c5ac7d41608e7d4f86d211c077
               expression: |
-                avg(/Brocade 6505 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)>{$TEMP_WARN:"{#SENSOR_INFO}"}
+                avg(/Brocade G620 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)>{$TEMP_WARN:"{#SENSOR_INFO}"}
                 or
-                last(/Brocade 6505 by SNMPv3/sensor.temp.status[swSensorStatus.{#SNMPINDEX}])={$TEMP_WARN_STATUS}
+                last(/Brocade G620 by SNMPv3/sensor.temp.status[swSensorStatus.{#SNMPINDEX}])={$TEMP_WARN_STATUS}
               recovery_mode: RECOVERY_EXPRESSION
-              recovery_expression: 'max(/Brocade 6505 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)<{$TEMP_WARN:"{#SENSOR_INFO}"}-3'
-              name: 'Brocade 6505: {#SENSOR_INFO}: Temperature is above warning threshold'
-              event_name: 'Brocade 6505: {#SENSOR_INFO}: Temperature is above warning threshold: >{$TEMP_WARN:"{#SENSOR_INFO}"}'
+              recovery_expression: 'max(/Brocade G620 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)<{$TEMP_WARN:"{#SENSOR_INFO}"}-3'
+              name: 'Brocade G620: {#SENSOR_INFO}: Temperature is above warning threshold'
+              event_name: 'Brocade G620: {#SENSOR_INFO}: Temperature is above warning threshold: >{$TEMP_WARN:"{#SENSOR_INFO}"}'
               opdata: 'Current value: {ITEM.LASTVALUE1}'
               priority: WARNING
               description: 'This trigger uses temperature sensor values as well as temperature sensor status if available'
               dependencies:
-                - name: 'Brocade 6505: {#SENSOR_INFO}: Temperature is above critical threshold'
-                  expression: 'avg(/Brocade 6505 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)>{$TEMP_CRIT:"{#SENSOR_INFO}"}'
-                  recovery_expression: 'max(/Brocade 6505 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)<{$TEMP_CRIT:"{#SENSOR_INFO}"}-3'
+                - name: 'Brocade G620: {#SENSOR_INFO}: Temperature is above critical threshold'
+                  expression: 'avg(/Brocade G620 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)>{$TEMP_CRIT:"{#SENSOR_INFO}"}'
+                  recovery_expression: 'max(/Brocade G620 by SNMPv3/sensor.temp.value[swSensorValue.{#SNMPINDEX}],5m)<{$TEMP_CRIT:"{#SENSOR_INFO}"}-3'
               tags:
                 - tag: scope
                   value: availability
@@ -1937,7 +1972,7 @@ zabbix_export:
           description: 'FC port discovery filter on swFCPortAdmStatus.'
         - macro: '{$FC.PORT.ADMSTATUS.NOT_MATCHES}'
           value: ^2$
-          description: 'Ignore FC ports that are administratively offline(2). Set to CHANGE_IF_NEEDED to discover them as well.'
+          description: 'Ignore FC ports whose swFCPortAdmStatus is offline(2). Fabric OS reports offline(2) for enabled ports without light as well as for disabled ones, so only ports online at discovery time are discovered; ports already discovered are kept through the lost resources settings of the rule. Set to CHANGE_IF_NEEDED to discover every port.'
         - macro: '{$FC.PORT.NAME.MATCHES}'
           value: '^.*$'
           description: 'FC port discovery filter on the generated port label (slot/port plus port name).'
@@ -1955,7 +1990,13 @@ zabbix_export:
           description: 'FC port traffic discovery filter on the Fabric OS port number derived from the connUnitPortStat index.'
         - macro: '{$FC.TRAFFIC.PORT.NOT_MATCHES}'
           value: CHANGE_IF_NEEDED
-          description: 'Exclude ports from FC traffic discovery by number, for example ^(1[2-9]|2[0-3])$ to drop ports 12-23. connUnitPortStatTable has no administrative status column, so every port of the switch is discovered unless it is filtered here.'
+          description: 'Exclude ports from FC traffic discovery by number, for example ^(4[89]|5[0-9]|6[0-3])$ to drop ports 48-63, the QSFP ports of a G620. Ports that are not online are already skipped through {$FC.TRAFFIC.PORT.STATE.NOT_MATCHES}; use this only for online ports you do not want to monitor.'
+        - macro: '{$FC.TRAFFIC.PORT.STATE.MATCHES}'
+          value: '^.*$'
+          description: 'FC port traffic discovery filter on connUnitPortState.'
+        - macro: '{$FC.TRAFFIC.PORT.STATE.NOT_MATCHES}'
+          value: ^3$
+          description: 'Ignore ports whose connUnitPortState is offline(3). Fabric OS reports offline(3) for every port that is not online - disabled, not licensed through Ports on Demand, or enabled without light - so only ports online at discovery time are discovered; ports already discovered are kept through the lost resources settings of the rule. Set to CHANGE_IF_NEEDED to discover every port.'
         - macro: '{$HEALTH_CRIT_STATUS}'
           value: '4'
         - macro: '{$HEALTH_WARN_STATUS:"offline"}'
@@ -2027,7 +2068,7 @@ zabbix_export:
           value: 496d
           description: 'Uptime value above which a drop to zero is treated as the SNMP TimeTicks counter wrapping rather than a reboot. TimeTicks is an unsigned 32-bit count of hundredths of a second, so it runs out after 497 days.'
       dashboards:
-        - uuid: 4274588e61a64efbb94bff11cb8251e5
+        - uuid: 85a01e15354342aaaf53f773ffe67bc8
           name: Overview
           pages:
             - name: Overview
@@ -2047,7 +2088,7 @@ zabbix_export:
                     - type: ITEM
                       name: itemid.0
                       value:
-                        host: 'Brocade 6505 by SNMPv3'
+                        host: 'Brocade G620 by SNMPv3'
                         key: system.name
                     - type: INTEGER
                       name: show.0
@@ -2077,7 +2118,7 @@ zabbix_export:
                     - type: ITEM
                       name: itemid.0
                       value:
-                        host: 'Brocade 6505 by SNMPv3'
+                        host: 'Brocade G620 by SNMPv3'
                         key: 'system.net.uptime[sysUpTime.0]'
                     - type: INTEGER
                       name: show.0
@@ -2160,7 +2201,7 @@ zabbix_export:
                     - type: ITEM
                       name: itemid.0
                       value:
-                        host: 'Brocade 6505 by SNMPv3'
+                        host: 'Brocade G620 by SNMPv3'
                         key: 'system.cpu.util[swCpuUsage.0]'
                     - type: STRING
                       name: max
@@ -2216,7 +2257,7 @@ zabbix_export:
                     - type: ITEM
                       name: itemid.0
                       value:
-                        host: 'Brocade 6505 by SNMPv3'
+                        host: 'Brocade G620 by SNMPv3'
                         key: 'vm.memory.util[swMemUsage.0]'
                     - type: STRING
                       name: max
@@ -2273,7 +2314,7 @@ zabbix_export:
                     - type: ITEM
                       name: itemid.0
                       value:
-                        host: 'Brocade 6505 by SNMPv3'
+                        host: 'Brocade G620 by SNMPv3'
                         key: system.hw.serialnumber
                     - type: INTEGER
                       name: show.0
@@ -2435,7 +2476,7 @@ zabbix_export:
                     - type: ITEM
                       name: itemid.0
                       value:
-                        host: 'Brocade 6505 by SNMPv3'
+                        host: 'Brocade G620 by SNMPv3'
                         key: system.hw.firmware
                     - type: INTEGER
                       name: show.0
@@ -2514,7 +2555,7 @@ zabbix_export:
                     - type: GRAPH_PROTOTYPE
                       name: graphid.0
                       value:
-                        host: 'Brocade 6505 by SNMPv3'
+                        host: 'Brocade G620 by SNMPv3'
                         name: 'Interface {#IFNAME}({#IFALIAS}): Network traffic'
                     - type: STRING
                       name: reference
@@ -2523,7 +2564,7 @@ zabbix_export:
                       name: rows
                       value: '6'
       valuemaps:
-        - uuid: edd16a8224404d41be93eff8fefad7de
+        - uuid: 5ccbf42eb27c41618da52bb88321e6d4
           name: 'IF-MIB::ifOperStatus'
           mappings:
             - value: '1'
@@ -2538,7 +2579,7 @@ zabbix_export:
               newvalue: 'Not Present'
             - value: '7'
               newvalue: 'Lower Layer Down'
-        - uuid: 35af0ea1ef8c428c820ed0b351256d72
+        - uuid: c07b6e6bf43447a6bdc4a8a20e60c791
           name: 'IF-MIB::ifType'
           mappings:
             - value: '1'
@@ -3113,14 +3154,14 @@ zabbix_export:
               newvalue: ptm
             - value: '290'
               newvalue: ghn
-        - uuid: 8dd66a4d591f466db83ed047f363b923
+        - uuid: 18542535b51842d6b3798fae264fbe17
           name: 'Service state'
           mappings:
             - value: '0'
               newvalue: Down
             - value: '1'
               newvalue: Up
-        - uuid: e9575c025ab741ee82bc25bd6586c025
+        - uuid: 9525c9687c3446d3853789d32d53d907
           name: 'SW-MIB::swFCPortBrcdType'
           mappings:
             - value: '1'
@@ -3139,7 +3180,7 @@ zabbix_export:
               newvalue: EX-port
             - value: '8'
               newvalue: D-port
-        - uuid: 0bbac476094b4f9c8f95f28d5b265b99
+        - uuid: b8323fed270347ad803bed87ae5f90dd
           name: 'SW-MIB::swFCPortOpStatus'
           mappings:
             - value: '0'
@@ -3152,7 +3193,7 @@ zabbix_export:
               newvalue: Testing
             - value: '4'
               newvalue: Faulty
-        - uuid: e9e8bee1537549a48e30a4d2ccf5ddcd
+        - uuid: 3deb1bc25d6541e9bf2f0e440f46266f
           name: 'SW-MIB::swFCPortPhyState'
           mappings:
             - value: '1'
@@ -3181,7 +3222,7 @@ zabbix_export:
               newvalue: 'No signal detected'
             - value: '255'
               newvalue: Unknown
-        - uuid: da5d115c86dc41eead0f624e91c8f1ce
+        - uuid: f2fdbdbe3fb647029fc4f25954c121b0
           name: 'SW-MIB::swFCPortSpeed'
           mappings:
             - value: '1'
@@ -3200,7 +3241,7 @@ zabbix_export:
               newvalue: Unknown
             - value: '8'
               newvalue: 16GFC
-        - uuid: 89871ec10bef4717ac946ff7902590d6
+        - uuid: a3061ab1868c4575a6166d3ada7946fd
           name: 'SW-MIB::swOperStatus'
           mappings:
             - value: '1'
@@ -3211,7 +3252,7 @@ zabbix_export:
               newvalue: Testing
             - value: '4'
               newvalue: Faulty
-        - uuid: 51955bdb72594b9e951423608bb696d9
+        - uuid: f4341ae9c194422fa4b392c80b0ac464
           name: 'SW-MIB::swSensorStatus'
           mappings:
             - value: '1'
@@ -3226,7 +3267,7 @@ zabbix_export:
               newvalue: 'Above max'
             - value: '6'
               newvalue: Absent
-        - uuid: cacc80d81a734bd7b1afe6c1ed03b8dd
+        - uuid: 3c28f7ddb43842b8a6fa4ff0445ea120
           name: zabbix.host.available
           mappings:
             - value: '0'
@@ -3236,12 +3277,12 @@ zabbix_export:
             - value: '2'
               newvalue: Unknown
   triggers:
-    - uuid: a82078258de94035894facd79376f84c
+    - uuid: c04e7a1b8e6347c3b1643284cb1aef62
       expression: |
-        last(/Brocade 6505 by SNMPv3/system.net.uptime[sysUpTime.0])<10m and
-        max(/Brocade 6505 by SNMPv3/system.net.uptime[sysUpTime.0],15m)<{$UPTIME.WRAP.THRESHOLD}
-      name: 'Brocade 6505: Host has been restarted'
-      event_name: 'Brocade 6505: {HOST.NAME} has been restarted (uptime < 10m)'
+        last(/Brocade G620 by SNMPv3/system.net.uptime[sysUpTime.0])<10m and
+        max(/Brocade G620 by SNMPv3/system.net.uptime[sysUpTime.0],15m)<{$UPTIME.WRAP.THRESHOLD}
+      name: 'Brocade G620: Host has been restarted'
+      event_name: 'Brocade G620: {HOST.NAME} has been restarted (uptime < 10m)'
       priority: WARNING
       description: |
         Uptime is less than 10 minutes.
@@ -3259,29 +3300,29 @@ zabbix_export:
         spot is a real reboot of a device whose uptime was already past {$UPTIME.WRAP.THRESHOLD}.
       manual_close: 'YES'
       dependencies:
-        - name: 'Brocade 6505: No SNMP data collection'
-          expression: 'max(/Brocade 6505 by SNMPv3/zabbix[host,snmp,available],{$SNMP.TIMEOUT})=0'
+        - name: 'Brocade G620: No SNMP data collection'
+          expression: 'max(/Brocade G620 by SNMPv3/zabbix[host,snmp,available],{$SNMP.TIMEOUT})=0'
       tags:
         - tag: scope
           value: notice
   graphs:
-    - uuid: 7ea3979ded7a49f7a5ee8586072a449a
-      name: 'Brocade 6505: CPU utilization'
+    - uuid: 57256d38726f48bc988a88c5cb5267b2
+      name: 'Brocade G620: CPU utilization'
       ymin_type_1: FIXED
       ymax_type_1: FIXED
       graph_items:
         - drawtype: GRADIENT_LINE
           color: 199C0D
           item:
-            host: 'Brocade 6505 by SNMPv3'
+            host: 'Brocade G620 by SNMPv3'
             key: 'system.cpu.util[swCpuUsage.0]'
-    - uuid: ac4000f4e5e8455fb3249c7cadf9caab
-      name: 'Brocade 6505: Memory utilization'
+    - uuid: 9436be462b3e4b84ae6ac88fe3080dcc
+      name: 'Brocade G620: Memory utilization'
       ymin_type_1: FIXED
       ymax_type_1: FIXED
       graph_items:
         - drawtype: GRADIENT_LINE
           color: 199C0D
           item:
-            host: 'Brocade 6505 by SNMPv3'
+            host: 'Brocade G620 by SNMPv3'
             key: 'vm.memory.util[swMemUsage.0]'

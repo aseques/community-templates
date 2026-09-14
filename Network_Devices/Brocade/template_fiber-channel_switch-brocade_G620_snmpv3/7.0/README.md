@@ -1,14 +1,16 @@
-# Brocade 6505 by SNMPv3 — Zabbix 7.0
+# Brocade G620 by SNMPv3 — Zabbix 7.0
 
-Import file: `template_fiber-channel_switch-brocade_6505_snmpv3.yaml`
+Import file: `template_fiber-channel_switch-brocade_G620_snmpv3.yaml`
 
-Monitors a Brocade 6505 Fibre Channel switch over SNMP. Adapted from the Zabbix Brocade FC template, with its own name and UUIDs so it can live alongside the original — but **do not link both to the same host**, the item keys collide.
+Monitors a Brocade G620 (Gen 6, 32GFC) Fibre Channel switch over SNMP. Adapted from the Zabbix Brocade FC template by way of the *Brocade 6505 by SNMPv3* template, with its own name and UUIDs so it can live alongside both — but **do not link more than one of them to the same host**, the item keys collide.
+
+> **Dell Connectrix DS-6620B:** Dell sells the Brocade G620 under its own brand as the **Dell Connectrix DS-6620B** (OEM). It is the same switch running Fabric OS, so this template can also be used to monitor a Dell Connectrix DS-6620B.
 
 MIBs used: **SW-MIB**, **FCMGMT-MIB (FA-MIB)**, **IF-MIB**, **SNMPv2-MIB**, **HOST-RESOURCES-MIB**.
 
 The SNMP version and credentials belong to the **host interface**, not to the template. The SNMP trap item needs a trap receiver configured separately on the server or proxy.
 
-**Tested against a Brocade 6505 running Fabric OS 8.0.2c, with Zabbix server 7.0.29.**
+**OIDs verified with `snmpwalk` against a Dell Connectrix DS-6620B (Brocade G620, `switchType 183`, `sysObjectID` `1.3.6.1.4.1.1588.2.1.1.1.183`) running Fabric OS v9.0.0a.** Derived from the Brocade 6505 template, which was tested against a Brocade 6505 running Fabric OS 8.0.2c, with Zabbix server 7.0.29.
 
 *Vietnamese version: [files/README_vi.md](files/README_vi.md)*
 
@@ -60,7 +62,7 @@ Source: SW-MIB `swFCPortTable` (`1.3.6.1.4.1.1588.2.1.1.1.6.2.1`). Discovery int
 | ~~Bits sent~~ | `.11` `swFCPortTxWords` | bps | **Disabled** |
 | ~~Speed~~ / ~~Speed, nominal bitrate~~ | `.35` `swFCPortSpeed` | | **Disabled** |
 
-Fabric OS 8.x **removed** columns `11`, `12` and `35` from `swFCPortTable`. Enable those items only if an `snmpwalk` shows your firmware still implements them.
+Fabric OS 8.x **removed** columns `11`, `12` and `35` from `swFCPortTable`. The G620 runs Fabric OS 8.x or later — on Fabric OS v9.0.0a the three columns are confirmed absent — so on this model leave those items disabled.
 
 **Frames received/sent is a frame rate, not a bit rate** — an FC frame carries between 0 and 2112 bytes of payload, so it cannot be converted to bps. Real throughput comes from the next rule.
 
@@ -80,9 +82,23 @@ This table is indexed by a **16-byte switch WWN followed by the port index**, wh
 
 The rule also reads `connUnitPortName` (`1.3.6.1.3.94.1.10.1.17`). If a port has a name/description configured on the switch, it is appended to the discovered item, graph and problem names; for example, port `4` named `ESXi-01 HBA1` is shown as `FC port 4 ESXi-01 HBA1`. An unnamed port keeps the number-only label.
 
-`connUnitPortSpeed` reports kilobytes per second; the item multiplies by `8000` to give the signalling rate the way Fibre Channel names it: `2000000` → **16 Gbps**, matching the speed column of `switchshow`.
+`connUnitPortSpeed` reports kilobytes per second; the item multiplies by `8000` to give the signalling rate the way Fibre Channel names it: `4000000` → **32 Gbps**, `2000000` → **16 Gbps**, matching the speed column of `switchshow`. On Fabric OS v9.0.0a an online port reports its negotiated speed (a port at N16 returns `2000000` next to N32 ports at `4000000`); a port without link reports the maximum, `4000000`.
 
-`connUnitPortStatTable` **has no administrative status column**, so every port of the switch is discovered, including unused ones. Filter with `{$FC.TRAFFIC.PORT.NOT_MATCHES}`.
+`connUnitPortStatTable` **has no administrative status column**, so the rule also pulls `connUnitPortState` (`1.3.6.1.3.94.1.10.1.6`) from `connUnitPortTable`, which shares the same index, into `{#FCPORTSTATE}`. A G620 has 64 ports (48 SFP+ ports 0–47 and 4 QSFP ports carrying ports 48–63), usually with only part of them licensed through Ports on Demand.
+
+FCMGMT-MIB describes `connUnitPortState` as the user selected state, but Fabric OS reports `offline(3)` for **every port that is not online**, and `swFCPortAdmStatus` behaves the same way. Values read from a DS-6620B on Fabric OS v9.0.0a:
+
+| Port in `switchshow` | `connUnitPortState` | `swFCPortAdmStatus` | Discovered |
+| --- | --- | --- | --- |
+| `Online` | `online(2)` | `online(1)` | ✓ |
+| `No_Light`, port enabled | `offline(3)` | `offline(2)` | — |
+| `No_Module`, no QFLEX Ports on Demand license, `Disabled` | `offline(3)` | `offline(2)` | — |
+
+So both FC rules discover the ports that are **online at discovery time**. A port brought online later — newly cabled, or licensed and enabled — is picked up by the next run, with no macro to change. `{$FC.TRAFFIC.PORT.NOT_MATCHES}` remains available to drop online ports by number.
+
+### Ports that go down after discovery
+
+A discovered port that loses its link drops out of the next discovery run. To keep watching it, both FC rules set **Disable lost resources = Never** and **Delete lost resources = after 30d**: its items keep polling, the *Port is not online* problem stays open until the port comes back, and only a port missing for 30 days is removed. Change this on the rules under **Data collection → Templates → Discovery rules → \<rule\>** if you want a different trade-off — **Never** for both keeps every port that was ever online.
 
 ## 1.4 `FAN Discovery` / `PSU Discovery` / `Temperature Discovery`
 
@@ -94,9 +110,11 @@ Source: SW-MIB `swSensorTable` (`1.3.6.1.4.1.1588.2.1.1.1.1.22.1`). Discovery in
 | PSU Discovery | `power-supply(3)` | Power supply status (`.3`) |
 | Temperature Discovery | `temperature(1)` | Temperature (`.4`, °C), Temperature status (`.3`) |
 
-`swSensorTable` lists **every sensor slot the platform can have**, not only the populated ones. A 6505 shipped with one fan and one power supply still exposes rows for the second fan and second supply, with `swSensorStatus` = `absent(6)`. All three rules pull `{#SENSOR_STATUS}` as well and drop the rows matching `{$SENSOR.STATUS.NOT_MATCHES}`.
+`swSensorTable` lists **every sensor slot the platform can have**, not only the populated ones. A switch with an empty fan or power supply bay still exposes a row for that bay, with `swSensorStatus` = `absent(6)`. All three rules pull `{#SENSOR_STATUS}` as well and drop the rows matching `{$SENSOR.STATUS.NOT_MATCHES}`.
 
 A JavaScript preprocessing step trims leading and trailing whitespace from `{#SENSOR_INFO}`, because Fabric OS returns sensor names with a leading space (`" FAN #1"`).
+
+On a DS-6620B with Fabric OS v9.0.0a the table holds 11 temperature sensors (`SLOT #0: TEMP #1` … `#11`), 2 fans and 2 power supplies.
 
 ## 1.5 `Network interfaces discovery` — management Ethernet port
 
@@ -148,7 +166,7 @@ FC ports do **not** go through this rule. `ifHCInOctets` is a `Counter64`, a dat
 
 **Port is not online** fires on a **state change**: only when the port leaves `online(1)` after having been online, so a port that was never in use raises nothing. Silence individual ports with `{$FC.PORTCONTROL:"<port label>"}=0`.
 
-**High bandwidth usage** in the traffic rule compares against `Speed × {$FC.SPEED.PAYLOAD.RATIO}`, not against Speed itself. The two traffic items count frame octets while `connUnitPortSpeed` reports the raw signalling on the wire; multiplying by `0.8` gives the throughput figure the Fibre Channel standard publishes (16GFC = 1600 MB/s = 12.8 Gbps). This trigger has no dependency on the port state trigger, because that one belongs to the other discovery rule and Zabbix only allows dependencies within the same rule.
+**High bandwidth usage** in the traffic rule compares against `Speed × {$FC.SPEED.PAYLOAD.RATIO}`, not against Speed itself. The two traffic items count frame octets while `connUnitPortSpeed` reports the raw signalling on the wire; multiplying by `0.8` gives the throughput figure the Fibre Channel standard publishes (16GFC = 1600 MB/s = 12.8 Gbps, 32GFC = 3200 MB/s = 25.6 Gbps). This trigger has no dependency on the port state trigger, because that one belongs to the other discovery rule and Zabbix only allows dependencies within the same rule.
 
 ## 2.3 Fans, power supplies, temperature
 
@@ -228,11 +246,13 @@ If a sensor moves to `absent(6)`, the next discovery run filters it out and the 
 | Macro | Default | Meaning |
 | --- | --- | --- |
 | `{$FC.PORT.ADMSTATUS.MATCHES}` | `^.*$` | Discovery filter on `swFCPortAdmStatus` |
-| `{$FC.PORT.ADMSTATUS.NOT_MATCHES}` | `^2$` | Skip FC ports that are administratively offline |
+| `{$FC.PORT.ADMSTATUS.NOT_MATCHES}` | `^2$` | Skip FC ports in `offline(2)` — on Fabric OS that is every port not online, including enabled ports with no light |
 | `{$FC.PORT.NAME.MATCHES}` | `^.*$` | Discovery filter on the port label (`swFCPortSpecifier` + `swFCPortName`) |
 | `{$FC.PORT.NAME.NOT_MATCHES}` | `CHANGE_IF_NEEDED` | Exclude ports by label |
 | `{$FC.TRAFFIC.PORT.MATCHES}` | `^[0-9]+$` | Filter of the FA-MIB bandwidth rule, on the **port number** |
-| `{$FC.TRAFFIC.PORT.NOT_MATCHES}` | `CHANGE_IF_NEEDED` | Exclude ports from the bandwidth rule, e.g. `^(1[2-9]\|2[0-3])$` to drop ports 12–23 |
+| `{$FC.TRAFFIC.PORT.NOT_MATCHES}` | `CHANGE_IF_NEEDED` | Exclude online ports from the bandwidth rule by number, e.g. `^(4[89]\|5[0-9]\|6[0-3])$` to drop ports 48–63 (the QSFP ports of a G620) |
+| `{$FC.TRAFFIC.PORT.STATE.MATCHES}` | `^.*$` | Filter of the FA-MIB bandwidth rule on `connUnitPortState` |
+| `{$FC.TRAFFIC.PORT.STATE.NOT_MATCHES}` | `^3$` | Skip ports in `offline(3)` — on Fabric OS that is every port not online. Set to `CHANGE_IF_NEEDED` to discover every port |
 | `{$FC.PORTCONTROL}` | `1` | `{$FC.PORTCONTROL:"<port label>"}=0` disables the *Port is not online* trigger for an unused port |
 | `{$FC.IF.UTIL.MAX}` | `90` | FC port bandwidth threshold (%) |
 | `{$FC.SPEED.PAYLOAD.RATIO}` | `0.8` | Fraction of the signalling rate that carries frame data, used as the 100% reference of the bandwidth trigger. `0.8` comes from 8b/10b encoding and is exact for 1/2/4/8GFC; from 16GFC on the encoding is 64b/66b, so the real ceiling is a few percent higher and a saturated port can read above 100% |

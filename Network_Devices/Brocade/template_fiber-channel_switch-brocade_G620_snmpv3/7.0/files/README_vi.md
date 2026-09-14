@@ -1,14 +1,16 @@
-# Brocade 6505 by SNMPv3 — Zabbix 7.0
+# Brocade G620 by SNMPv3 — Zabbix 7.0
 
-File import: `template_fiber-channel_switch-brocade_6505_snmpv3.yaml`
+File import: `template_fiber-channel_switch-brocade_G620_snmpv3.yaml`
 
-Template giám sát switch Fibre Channel Brocade 6505 qua SNMP. Được điều chỉnh từ template Brocade FC của Zabbix, có tên và UUID riêng nên tồn tại song song được với template gốc — nhưng **không liên kết cả hai vào cùng một host** vì trùng item key.
+Template giám sát switch Fibre Channel Brocade G620 (Gen 6, 32GFC) qua SNMP. Được điều chỉnh từ template Brocade FC của Zabbix thông qua template *Brocade 6505 by SNMPv3*, có tên và UUID riêng nên tồn tại song song được với cả hai — nhưng **không liên kết quá một template trong số đó vào cùng một host** vì trùng item key.
+
+> **Ghi chú — Dell Connectrix DS-6620B:** Dòng Brocade G620 được OEM cho Dell với tên **Dell Connectrix DS-6620B**. Đây là cùng một thiết bị chạy Fabric OS, nên template này cũng có thể sử dụng để monitor Dell Connectrix DS-6620B.
 
 MIB sử dụng: **SW-MIB**, **FCMGMT-MIB (FA-MIB)**, **IF-MIB**, **SNMPv2-MIB**, **HOST-RESOURCES-MIB**.
 
 Phiên bản SNMP và thông tin xác thực đặt trên **interface của host**, không nằm trong template. Item SNMP trap cần cấu hình bộ nhận trap riêng trên server/proxy.
 
-**Đã kiểm thử trên thiết bị Brocade 6505 chạy Fabric OS 8.0.2c, với Zabbix server 7.0.29.**
+**Đã xác nhận OID bằng `snmpwalk` trên Dell Connectrix DS-6620B (Brocade G620, `switchType 183`, `sysObjectID` `1.3.6.1.4.1.1588.2.1.1.1.183`) chạy Fabric OS v9.0.0a.** Xây dựng từ template Brocade 6505, vốn đã kiểm thử trên thiết bị Brocade 6505 chạy Fabric OS 8.0.2c, với Zabbix server 7.0.29.
 
 *Bản tiếng Anh: [../README.md](../README.md)*
 
@@ -60,7 +62,7 @@ Index `{#SNMPINDEX}` = `swFCPortIndex` bắt đầu từ 1, số cổng Fabric O
 | ~~Bits sent~~ | `.11` `swFCPortTxWords` | bps | **Disabled** |
 | ~~Speed~~ / ~~Speed, nominal bitrate~~ | `.35` `swFCPortSpeed` | | **Disabled** |
 
-Fabric OS 8.x **đã bỏ** các cột `11`, `12` và `35` khỏi `swFCPortTable`. Chỉ bật các item này nếu `snmpwalk` cho thấy firmware còn cài đặt chúng.
+Fabric OS 8.x **đã bỏ** các cột `11`, `12` và `35` khỏi `swFCPortTable`. G620 chạy Fabric OS 8.x trở lên — trên Fabric OS v9.0.0a đã xác nhận ba cột này không còn — nên với dòng này hãy để các item đó ở trạng thái tắt.
 
 **Frames received/sent là tốc độ khung, không phải bit rate** — một khung FC mang 0–2112 byte payload nên không quy đổi được sang bps. Băng thông thật nằm ở rule tiếp theo.
 
@@ -80,9 +82,23 @@ Bảng này đánh index bằng **WWN switch 16 byte + port index**, khác hoàn
 
 Rule cũng đọc `connUnitPortName` (`1.3.6.1.3.94.1.10.1.17`). Nếu cổng có name/description được cấu hình trên switch, nội dung đó được nối vào tên item, graph và Problem; ví dụ cổng `4` có tên `ESXi-01 HBA1` sẽ hiển thị thành `FC port 4 ESXi-01 HBA1`. Cổng không có tên vẫn chỉ hiển thị số cổng.
 
-`connUnitPortSpeed` trả về KB/s, item nhân `8000` để ra tốc độ tín hiệu đúng tên gọi chuẩn FC: `2000000` → **16 Gbps**, khớp cột speed của `switchshow`.
+`connUnitPortSpeed` trả về KB/s, item nhân `8000` để ra tốc độ tín hiệu đúng tên gọi chuẩn FC: `4000000` → **32 Gbps**, `2000000` → **16 Gbps**, khớp cột speed của `switchshow`. Trên Fabric OS v9.0.0a, cổng online trả tốc độ đã negotiate (cổng N16 trả `2000000`, các cổng N32 bên cạnh trả `4000000`); cổng không có link trả tốc độ tối đa `4000000`.
 
-`connUnitPortStatTable` **không có cột trạng thái quản trị**, nên mọi cổng của switch đều được discovery kể cả cổng chưa dùng. Lọc bằng `{$FC.TRAFFIC.PORT.NOT_MATCHES}`.
+`connUnitPortStatTable` **không có cột trạng thái quản trị**, nên rule lấy thêm `connUnitPortState` (`1.3.6.1.3.94.1.10.1.6`) từ `connUnitPortTable` — bảng dùng chung index — vào `{#FCPORTSTATE}`. G620 có 64 cổng (48 cổng SFP+ số 0–47 và 4 cổng QSFP mang các cổng 48–63), thường chỉ một phần được cấp license qua Ports on Demand.
+
+FCMGMT-MIB mô tả `connUnitPortState` là trạng thái do người dùng chọn, nhưng Fabric OS trả `offline(3)` cho **mọi cổng không online**, và `swFCPortAdmStatus` cũng vậy. Giá trị đọc được từ DS-6620B chạy Fabric OS v9.0.0a:
+
+| Cổng trong `switchshow` | `connUnitPortState` | `swFCPortAdmStatus` | Được discovery |
+| --- | --- | --- | --- |
+| `Online` | `online(2)` | `online(1)` | ✓ |
+| `No_Light`, cổng đang enable | `offline(3)` | `offline(2)` | — |
+| `No_Module`, chưa có license QFLEX Ports on Demand, `Disabled` | `offline(3)` | `offline(2)` | — |
+
+Vì vậy cả hai rule FC discovery các cổng **đang online tại thời điểm chạy discovery**. Cổng online sau này — mới cắm cáp, hoặc mới có license và được enable — sẽ tự được thêm ở lần chạy kế tiếp, không cần sửa macro. `{$FC.TRAFFIC.PORT.NOT_MATCHES}` vẫn dùng được để loại thêm cổng đang online theo số cổng.
+
+### Cổng bị down sau khi đã discovery
+
+Cổng đã được discovery mà mất link sẽ không còn trong kết quả discovery lần sau. Để vẫn theo dõi được, cả hai rule FC đặt **Disable lost resources = Never** và **Delete lost resources = sau 30d**: item của cổng vẫn tiếp tục được poll, problem *Port is not online* giữ nguyên tới khi cổng online lại, và chỉ cổng vắng mặt quá 30 ngày mới bị xóa. Có thể đổi trên rule tại **Data collection → Templates → Discovery rules → \<rule\>** nếu muốn cách khác — đặt **Never** cho cả hai thì giữ mọi cổng từng online.
 
 ## 1.4 `FAN Discovery` / `PSU Discovery` / `Temperature Discovery`
 
@@ -94,9 +110,11 @@ Nguồn: SW-MIB `swSensorTable` (`1.3.6.1.4.1.1588.2.1.1.1.1.22.1`). Chu kỳ di
 | PSU Discovery | `power-supply(3)` | Power supply status (`.3`) |
 | Temperature Discovery | `temperature(1)` | Temperature (`.4`, °C), Temperature status (`.3`) |
 
-`swSensorTable` liệt kê **mọi slot cảm biến nền tảng có thể có**, không chỉ slot đã lắp phần cứng. Một 6505 với 1 quạt 1 nguồn vẫn trả về dòng cho quạt/nguồn thứ hai với `swSensorStatus` = `absent(6)`. Ba rule lấy thêm `{#SENSOR_STATUS}` và loại các dòng khớp `{$SENSOR.STATUS.NOT_MATCHES}`.
+`swSensorTable` liệt kê **mọi slot cảm biến nền tảng có thể có**, không chỉ slot đã lắp phần cứng. Switch có khe quạt hoặc khe nguồn trống vẫn trả về dòng cho khe đó với `swSensorStatus` = `absent(6)`. Ba rule lấy thêm `{#SENSOR_STATUS}` và loại các dòng khớp `{$SENSOR.STATUS.NOT_MATCHES}`.
 
 Bước preprocessing JavaScript cắt khoảng trắng đầu/cuối của `{#SENSOR_INFO}`, vì Fabric OS trả tên cảm biến có dấu cách đầu (`" FAN #1"`).
+
+Trên DS-6620B chạy Fabric OS v9.0.0a, bảng có 11 cảm biến nhiệt (`SLOT #0: TEMP #1` … `#11`), 2 quạt và 2 nguồn.
 
 ## 1.5 `Network interfaces discovery` — cổng Ethernet quản trị
 
@@ -148,7 +166,7 @@ Cổng FC **không** đi qua rule này. `ifHCInOctets` kiểu `Counter64` — SN
 
 **Port is not online** bắn theo **thay đổi trạng thái**: chỉ kích hoạt khi cổng rời khỏi `online(1)` sau khi đã từng online, nên cổng chưa bao giờ dùng không sinh cảnh báo. Tắt riêng từng cổng bằng `{$FC.PORTCONTROL:"<nhãn cổng>"}=0`.
 
-**High bandwidth usage** của rule traffic so sánh với `Speed × {$FC.SPEED.PAYLOAD.RATIO}`, không so với Speed. Hai item lưu lượng đếm octet của khung còn `connUnitPortSpeed` báo tín hiệu thô trên dây; nhân `0.8` cho ra throughput chuẩn FC công bố (16GFC = 1600 MB/s = 12,8 Gbps). Trigger này không có dependency vào trạng thái cổng vì trigger đó thuộc rule khác, mà Zabbix chỉ cho phép dependency trong cùng một rule.
+**High bandwidth usage** của rule traffic so sánh với `Speed × {$FC.SPEED.PAYLOAD.RATIO}`, không so với Speed. Hai item lưu lượng đếm octet của khung còn `connUnitPortSpeed` báo tín hiệu thô trên dây; nhân `0.8` cho ra throughput chuẩn FC công bố (16GFC = 1600 MB/s = 12,8 Gbps, 32GFC = 3200 MB/s = 25,6 Gbps). Trigger này không có dependency vào trạng thái cổng vì trigger đó thuộc rule khác, mà Zabbix chỉ cho phép dependency trong cùng một rule.
 
 ## 2.3 Quạt, nguồn, nhiệt độ
 
@@ -228,11 +246,13 @@ Nếu một cảm biến chuyển sang `absent(6)`, lần discovery kế tiếp 
 | Macro | Mặc định | Ý nghĩa |
 | --- | --- | --- |
 | `{$FC.PORT.ADMSTATUS.MATCHES}` | `^.*$` | Lọc discovery theo `swFCPortAdmStatus` |
-| `{$FC.PORT.ADMSTATUS.NOT_MATCHES}` | `^2$` | Bỏ qua cổng FC `offline` về mặt quản trị |
+| `{$FC.PORT.ADMSTATUS.NOT_MATCHES}` | `^2$` | Bỏ qua cổng FC `offline(2)` — trên Fabric OS là mọi cổng không online, kể cả cổng enable nhưng không có tín hiệu quang |
 | `{$FC.PORT.NAME.MATCHES}` | `^.*$` | Lọc discovery theo nhãn cổng (`swFCPortSpecifier` + `swFCPortName`) |
 | `{$FC.PORT.NAME.NOT_MATCHES}` | `CHANGE_IF_NEEDED` | Loại trừ cổng theo nhãn |
 | `{$FC.TRAFFIC.PORT.MATCHES}` | `^[0-9]+$` | Lọc rule băng thông FA-MIB theo **số cổng** |
-| `{$FC.TRAFFIC.PORT.NOT_MATCHES}` | `CHANGE_IF_NEEDED` | Loại cổng khỏi rule băng thông, ví dụ `^(1[2-9]\|2[0-3])$` để bỏ port 12–23 |
+| `{$FC.TRAFFIC.PORT.NOT_MATCHES}` | `CHANGE_IF_NEEDED` | Loại cổng đang online khỏi rule băng thông theo số cổng, ví dụ `^(4[89]\|5[0-9]\|6[0-3])$` để bỏ port 48–63 (các cổng QSFP của G620) |
+| `{$FC.TRAFFIC.PORT.STATE.MATCHES}` | `^.*$` | Lọc rule băng thông FA-MIB theo `connUnitPortState` |
+| `{$FC.TRAFFIC.PORT.STATE.NOT_MATCHES}` | `^3$` | Bỏ qua cổng `offline(3)` — trên Fabric OS là mọi cổng không online. Đặt `CHANGE_IF_NEEDED` để discovery mọi cổng |
 | `{$FC.PORTCONTROL}` | `1` | `{$FC.PORTCONTROL:"<nhãn cổng>"}=0` tắt trigger *Port is not online* cho cổng không dùng |
 | `{$FC.IF.UTIL.MAX}` | `90` | Ngưỡng % băng thông cổng FC |
 | `{$FC.SPEED.PAYLOAD.RATIO}` | `0.8` | Tỉ lệ tín hiệu mang dữ liệu khung, dùng làm mốc 100% của trigger băng thông. `0.8` đến từ mã hóa 8b/10b, chính xác với 1/2/4/8GFC; từ 16GFC dùng 64b/66b nên trần thật cao hơn vài phần trăm và cổng bão hòa có thể vượt 100% |
