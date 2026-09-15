@@ -995,7 +995,6 @@ This repository is dedicated to templates that are created and maintained by Zab
     * [VMware](Virtualization/VMware)
         * [Virt VMware Hypervisor ESXi - Andre Bello](Virtualization/VMware/template_hypervisor_esxi_vmware_datastore_monitoring)
         * [Virt VMware Hypervisor](Virtualization/VMware/template_improved_virt_vmware_hypervisor)
-        * [VMware ESXi 8 by SNMP](Virtualization/VMware/template_snmp_check_esxi_8)
         * [vCenter_SNMP-VMWARE_VCSA_6.7](Virtualization/VMware/template_snmp_check_for_vcenter_6.7_(vcsa_6.7))
         * [SNMP-VMWARE-Supervision_SNMPv2_vCenter](Virtualization/VMware/template_snmp_check_vcenter)
         * [vCenter_SNMP-VMWARE_VCSA_6.5](Virtualization/VMware/template_snmp_check_vcenter_(vcsa_6.5))
