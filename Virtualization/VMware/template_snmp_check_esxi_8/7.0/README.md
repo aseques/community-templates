@@ -101,7 +101,43 @@ Graph prototype: *Memory usage*.
 
 ## 1.5 `Datastore discovery` — HOST-RESOURCES-MIB `hrStorageTable`
 
-Filter: `hrStorageType` matches `{$VFS.FS.FSTYPE.MATCHES}` (`hrStorageFixedDisk`), plus a name filter. Discovery `1h`. `{#FSNAME}` is the mount path, `/vmfs/volumes/<datastore>`; visorfs ramdisks are not reported by ESXi.
+Filter: `hrStorageType` matches `{$VFS.FS.FSTYPE.MATCHES}` (`hrStorageFixedDisk`), plus a name filter on the mount path `{#FSNAME}`. Discovery `1h`. Visorfs ramdisks are not reported by ESXi.
+
+### Datastore names
+
+**ESXi SNMP does not expose the friendly datastore name.** Checked with `snmpwalk` on an ESXi 8 host: `hrStorageDescr` and `hrFSMountPoint` both return `/vmfs/volumes/<uuid>`, and `hrFSRemoteMountPoint` is empty for VMFS. A JavaScript step strips the prefix into `{#FSUUID}`, which is used in item, trigger and graph names, in the `datastore` tag and as macro context:
+
+```
+Datastore [64382f1f-e60d35ca-e545-30d042989461]: Space utilization
+```
+
+To find which datastore a UUID belongs to, run `esxcli storage filesystem list` on the host (columns Mount Point and Volume Name).
+
+### Shared (SAN) datastores: exclude them, they are monitored by a separate template
+
+This rule is meant for **host-local storage only**. A VMFS datastore on a SAN LUN is mounted by every host of the cluster, and each host reports it with the same UUID. The items do not conflict, since they belong to different hosts, but the same datastore would be polled N times and a full datastore would open N identical problems. **Shared datastores are monitored once, by a separate template**, and must be excluded here.
+
+SNMP cannot tell local and shared datastores apart automatically. Checked with `snmpwalk` on an ESXi 8 host with a Dell PERC local disk and Dell EMC (DGC) Fibre Channel LUNs:
+
+- `hrDeviceDescr` does show the LUN model (`LUN DELL PERC H730P Mini …` vs `LUN DGC VRAID 5007 …`);
+- but a datastore cannot be linked to its LUN: `hrPartitionFSIndex` returns a per-device counter (1, 2, … on every LUN) instead of the `hrFSTable` index, and `hrFSTable` has no device reference.
+
+Exclude them by UUID with `{$VFS.FS.FSUUID.NOT_MATCHES}`, set on the **host group of the cluster** so every host gets the same list:
+
+```sh
+esxcli storage vmfs extent list          # VMFS UUID -> Device Name
+esxcli storage core device list | grep -E "^naa|Display Name|Is Shared Clusterwide"
+```
+
+```
+{$VFS.FS.FSUUID.NOT_MATCHES} = ^(64382f1f-e60d35ca-e545-30d042989461|68359f81-1031e575-89d4-20040fe2cdcf|6a3b5015-75bdd474-9824-30d042989461)$
+```
+
+Add the UUID of every new SAN datastore to the list. Items of a datastore that stops matching are removed after the rule's *Delete lost resources* period (7 days by default).
+
+What stays: local VMFS datastores, the `OSDATA` system volume (VMFS-L) and the two small UUID volumes not listed by `esxcli storage vmfs extent list`, which are most likely the `BOOTBANK1`/`BOOTBANK2` vfat partitions — all host-specific. Exclude them the same way if you do not want them. NFS datastores were not tested; if they appear, exclude them with the same macro.
+
+The *Disk device discovery* rule still lists SAN LUNs. That is intended: `hrDeviceStatus` is each host's own view of the LUN, so a LUN down on one host is a host-specific problem.
 
 | Item | OID | Units | Interval |
 | --- | --- | --- | --- |
@@ -250,7 +286,7 @@ Graph prototype: *Network traffic*. `ifAdminStatus` is read-only on ESXi.
 | Device [..]: Device is down | AVERAGE | | | Disk device discovery |
 | Device [..]: Device is in warning state | WARNING | | Device is down | Disk device discovery |
 
-- Datastore: space utilization `> {$VFS.FS.PUSED.MAX.CRIT}` (90) / `> {$VFS.FS.PUSED.MAX.WARN}` (80). Both macros accept the mount path as context, e.g. `{$VFS.FS.PUSED.MAX.CRIT:"/vmfs/volumes/backup"}=97`.
+- Datastore: space utilization `> {$VFS.FS.PUSED.MAX.CRIT}` (90) / `> {$VFS.FS.PUSED.MAX.WARN}` (80). Both macros accept the datastore UUID as context, e.g. `{$VFS.FS.PUSED.MAX.CRIT:"64382f1f-e60d35ca-e545-30d042989461"}=97`.
 - HBA: critical when `vmwHbaStatus ≥ {$ESXI.SUBSYSTEM.CRIT.STATUS}` (4 = critical or failed); warning when `= {$ESXI.SUBSYSTEM.WARN.STATUS}` (3 = marginal).
 - Disk device: `hrDeviceStatus = 5` (down) / `= 3` (warning).
 - HBA count: the value dropped compared to the previous poll.
@@ -320,8 +356,8 @@ A VM that was already off when the template was linked raises nothing. Silence o
 | --- | --- | --- |
 | `{$CPU.UTIL.CRIT}` | `90` | CPU utilization (%), 5-minute minimum |
 | `{$MEMORY.UTIL.MAX}` | `90` | Memory utilization (%), 5-minute minimum |
-| `{$VFS.FS.PUSED.MAX.CRIT}` | `90` | Datastore critical threshold (%), context = mount path |
-| `{$VFS.FS.PUSED.MAX.WARN}` | `80` | Datastore warning threshold (%), context = mount path |
+| `{$VFS.FS.PUSED.MAX.CRIT}` | `90` | Datastore critical threshold (%), context = datastore UUID |
+| `{$VFS.FS.PUSED.MAX.WARN}` | `80` | Datastore warning threshold (%), context = datastore UUID |
 | `{$IF.UTIL.MAX}` | `90` | Interface bandwidth (%), context = ifName |
 | `{$IF.ERRORS.WARN}` | `2` | Interface errors per second, context = ifName |
 | `{$ICMP_LOSS_WARN}` | `20` | ICMP loss (%) |
@@ -357,6 +393,7 @@ A VM that was already off when the template was linked raises nothing. Silence o
 | `{$MEMORY.TYPE.MATCHES}` | `.*(\.2\|hrStorageRam)$` | Memory row of `hrStorageTable` |
 | `{$VFS.FS.FSTYPE.MATCHES}` | `.*(\.4\|hrStorageFixedDisk)$` | Datastore rows of `hrStorageTable` |
 | `{$VFS.FS.FSNAME.MATCHES}` / `…NOT_MATCHES` | `.+` / `CHANGE_IF_NEEDED` | Datastore mount path |
+| `{$VFS.FS.FSUUID.NOT_MATCHES}` | `CHANGE_IF_NEEDED` | Datastore UUIDs to exclude — **list the shared (SAN) datastores here**, on the cluster host group |
 | `{$ESXI.HBA.NAME.MATCHES}` / `…NOT_MATCHES` | `.*` / `CHANGE_IF_NEEDED` | HBA name (`vmhbaN`) |
 | `{$ESXI.HRDEVICE.TYPE.MATCHES}` | `.*(\.6\|hrDeviceDiskStorage)$` | `hrDeviceType` to discover |
 | `{$ESXI.HRDEVICE.DESCR.NOT_MATCHES}` | `CHANGE_IF_NEEDED` | Exclude devices by description |
@@ -375,6 +412,7 @@ If `proc.num[hostd]` reads `0` on a healthy host, run `snmpwalk -v2c -c <communi
 
 # 4. Not covered
 
+- **Shared (SAN) datastores**: monitored once by a separate template, not per host — see *Shared (SAN) datastores* in section 1.5.
 - **Per-VM performance** (CPU ready, disk latency, per-VM network): not in any SNMP MIB — use the Zabbix *VMware* template (VMware API).
 - **Hardware sensors** (fan RPM, temperatures, PSU state as values): ESXi 8 only exposes them as IPMI SEL events (`vmwEnvTable`, traps); use the server's BMC (iDRAC/iLO/XCC) template for sensor readings.
 - **vSAN, NSX, vCenter services**: the NSX/VCHA/vROps/SRM MIBs in `files/vmware` belong to other products and are not used.

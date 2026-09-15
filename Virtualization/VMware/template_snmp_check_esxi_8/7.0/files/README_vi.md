@@ -101,7 +101,43 @@ Graph prototype: *Memory usage*.
 
 ## 1.5 `Datastore discovery` — HOST-RESOURCES-MIB `hrStorageTable`
 
-Lọc: `hrStorageType` khớp `{$VFS.FS.FSTYPE.MATCHES}` (`hrStorageFixedDisk`) và lọc theo tên. Discovery `1h`. `{#FSNAME}` là đường dẫn mount, `/vmfs/volumes/<datastore>`; ESXi không báo ramdisk visorfs.
+Lọc: `hrStorageType` khớp `{$VFS.FS.FSTYPE.MATCHES}` (`hrStorageFixedDisk`) và lọc theo đường dẫn mount `{#FSNAME}`. Discovery `1h`. ESXi không báo ramdisk visorfs.
+
+### Tên datastore
+
+**SNMP của ESXi không có tên datastore dễ đọc.** Đã kiểm tra bằng `snmpwalk` trên host ESXi 8: `hrStorageDescr` và `hrFSMountPoint` đều trả về `/vmfs/volumes/<uuid>`, còn `hrFSRemoteMountPoint` để trống với VMFS. Một bước JavaScript cắt tiền tố thành `{#FSUUID}`, dùng cho tên item, trigger, graph, tag `datastore` và context của macro:
+
+```
+Datastore [64382f1f-e60d35ca-e545-30d042989461]: Space utilization
+```
+
+Muốn biết UUID là datastore nào, chạy `esxcli storage filesystem list` trên host (cột Mount Point và Volume Name).
+
+### Datastore dùng chung (SAN): cần exclude, được giám sát bằng template riêng
+
+Rule này chỉ dành cho **storage local của từng host**. Datastore VMFS nằm trên LUN SAN được mọi host trong cluster mount, và host nào cũng báo nó với cùng một UUID. Item không bị conflict vì thuộc các host khác nhau, nhưng cùng một datastore sẽ bị poll N lần và khi đầy sẽ mở N problem giống hệt nhau. **Datastore dùng chung được giám sát một lần bằng template riêng**, và phải exclude khỏi template này.
+
+SNMP không tự phân biệt được datastore local và datastore dùng chung. Đã kiểm tra bằng `snmpwalk` trên host ESXi 8 có ổ local Dell PERC và LUN Fibre Channel Dell EMC (DGC):
+
+- `hrDeviceDescr` có hiện model LUN (`LUN DELL PERC H730P Mini …` và `LUN DGC VRAID 5007 …`);
+- nhưng không nối được datastore với LUN của nó: `hrPartitionFSIndex` trả về bộ đếm riêng của từng LUN (1, 2, … trên mọi LUN) thay vì index trong `hrFSTable`, còn `hrFSTable` không có tham chiếu tới thiết bị.
+
+Exclude theo UUID bằng `{$VFS.FS.FSUUID.NOT_MATCHES}`, đặt trên **host group của cluster** để mọi host dùng chung một danh sách:
+
+```sh
+esxcli storage vmfs extent list          # VMFS UUID -> Device Name
+esxcli storage core device list | grep -E "^naa|Display Name|Is Shared Clusterwide"
+```
+
+```
+{$VFS.FS.FSUUID.NOT_MATCHES} = ^(64382f1f-e60d35ca-e545-30d042989461|68359f81-1031e575-89d4-20040fe2cdcf|6a3b5015-75bdd474-9824-30d042989461)$
+```
+
+Mỗi khi thêm datastore SAN mới, bổ sung UUID của nó vào danh sách. Item của datastore không còn khớp discovery sẽ bị xoá sau thời gian *Delete lost resources* của rule (mặc định 7 ngày).
+
+Những gì còn lại: datastore VMFS local, volume hệ thống `OSDATA` (VMFS-L) và hai volume UUID nhỏ không có trong `esxcli storage vmfs extent list`, nhiều khả năng là phân vùng vfat `BOOTBANK1`/`BOOTBANK2` — đều gắn riêng với host. Nếu không muốn giám sát thì exclude theo cách tương tự. Datastore NFS chưa được kiểm tra; nếu xuất hiện thì exclude bằng cùng macro.
+
+Rule *Disk device discovery* vẫn liệt kê LUN SAN, và điều đó là có chủ ý: `hrDeviceStatus` là trạng thái LUN nhìn từ chính host đó, nên LUN down trên một host là sự cố riêng của host ấy.
 
 | Item | OID | Đơn vị | Chu kỳ |
 | --- | --- | --- | --- |
@@ -250,7 +286,7 @@ Graph prototype: *Network traffic*. `ifAdminStatus` chỉ đọc trên ESXi.
 | Device [..]: Device is down | AVERAGE | | | Disk device discovery |
 | Device [..]: Device is in warning state | WARNING | | Device is down | Disk device discovery |
 
-- Datastore: space utilization `> {$VFS.FS.PUSED.MAX.CRIT}` (90) / `> {$VFS.FS.PUSED.MAX.WARN}` (80). Hai macro nhận context là đường dẫn mount, ví dụ `{$VFS.FS.PUSED.MAX.CRIT:"/vmfs/volumes/backup"}=97`.
+- Datastore: space utilization `> {$VFS.FS.PUSED.MAX.CRIT}` (90) / `> {$VFS.FS.PUSED.MAX.WARN}` (80). Hai macro nhận context là UUID của datastore, ví dụ `{$VFS.FS.PUSED.MAX.CRIT:"64382f1f-e60d35ca-e545-30d042989461"}=97`.
 - HBA: critical khi `vmwHbaStatus ≥ {$ESXI.SUBSYSTEM.CRIT.STATUS}` (4 = critical hoặc failed); warning khi `= {$ESXI.SUBSYSTEM.WARN.STATUS}` (3 = marginal).
 - Disk device: `hrDeviceStatus = 5` (down) / `= 3` (warning).
 - Số HBA: giá trị giảm so với lần poll trước.
@@ -320,8 +356,8 @@ VM đã tắt từ trước khi gắn template sẽ không cảnh báo. Tắt c�
 | --- | --- | --- |
 | `{$CPU.UTIL.CRIT}` | `90` | Ngưỡng CPU (%), min 5 phút |
 | `{$MEMORY.UTIL.MAX}` | `90` | Ngưỡng RAM (%), min 5 phút |
-| `{$VFS.FS.PUSED.MAX.CRIT}` | `90` | Ngưỡng datastore critical (%), context = đường dẫn mount |
-| `{$VFS.FS.PUSED.MAX.WARN}` | `80` | Ngưỡng datastore warning (%), context = đường dẫn mount |
+| `{$VFS.FS.PUSED.MAX.CRIT}` | `90` | Ngưỡng datastore critical (%), context = UUID datastore |
+| `{$VFS.FS.PUSED.MAX.WARN}` | `80` | Ngưỡng datastore warning (%), context = UUID datastore |
 | `{$IF.UTIL.MAX}` | `90` | Băng thông interface (%), context = ifName |
 | `{$IF.ERRORS.WARN}` | `2` | Số lỗi/giây của interface, context = ifName |
 | `{$ICMP_LOSS_WARN}` | `20` | ICMP loss (%) |
@@ -357,6 +393,7 @@ VM đã tắt từ trước khi gắn template sẽ không cảnh báo. Tắt c�
 | `{$MEMORY.TYPE.MATCHES}` | `.*(\.2\|hrStorageRam)$` | Dòng RAM trong `hrStorageTable` |
 | `{$VFS.FS.FSTYPE.MATCHES}` | `.*(\.4\|hrStorageFixedDisk)$` | Dòng datastore trong `hrStorageTable` |
 | `{$VFS.FS.FSNAME.MATCHES}` / `…NOT_MATCHES` | `.+` / `CHANGE_IF_NEEDED` | Đường dẫn mount datastore |
+| `{$VFS.FS.FSUUID.NOT_MATCHES}` | `CHANGE_IF_NEEDED` | UUID datastore cần loại — **liệt kê datastore dùng chung (SAN) ở đây**, đặt trên host group của cluster |
 | `{$ESXI.HBA.NAME.MATCHES}` / `…NOT_MATCHES` | `.*` / `CHANGE_IF_NEEDED` | Tên HBA (`vmhbaN`) |
 | `{$ESXI.HRDEVICE.TYPE.MATCHES}` | `.*(\.6\|hrDeviceDiskStorage)$` | `hrDeviceType` cần discover |
 | `{$ESXI.HRDEVICE.DESCR.NOT_MATCHES}` | `CHANGE_IF_NEEDED` | Loại thiết bị theo mô tả |
@@ -375,6 +412,7 @@ Nếu `proc.num[hostd]` bằng `0` trên host bình thường, chạy `snmpwalk 
 
 # 4. Không bao gồm
 
+- **Datastore dùng chung (SAN)**: được giám sát một lần bằng template riêng, không theo từng host — xem mục *Datastore dùng chung (SAN)* ở phần 1.5.
 - **Hiệu năng từng VM** (CPU ready, độ trễ disk, network theo VM): không có trong MIB SNMP nào — dùng template *VMware* của Zabbix (VMware API).
 - **Cảm biến phần cứng** (RPM quạt, nhiệt độ, trạng thái PSU dạng giá trị): ESXi 8 chỉ đưa ra dưới dạng sự kiện IPMI SEL (`vmwEnvTable`, trap); dùng template BMC của server (iDRAC/iLO/XCC) để lấy số đo.
 - **vSAN, NSX, dịch vụ vCenter**: các MIB NSX/VCHA/vROps/SRM trong `files/vmware` thuộc sản phẩm khác, không dùng.

@@ -1081,33 +1081,63 @@ zabbix_export:
                 value: '{$VFS.FS.FSNAME.NOT_MATCHES}'
                 operator: NOT_MATCHES_REGEX
                 formulaid: C
+              - macro: '{#FSUUID}'
+                value: '{$VFS.FS.FSUUID.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+                formulaid: D
           description: |
             MIB: HOST-RESOURCES-MIB, hrStorageTable
             Discovers datastores (hrStorageType = hrStorageFixedDisk). ESXi does not report
-            visorfs ramdisks here. The name is the mount path, /vmfs/volumes/<datastore>.
+            visorfs ramdisks here.
+
+            Intended for host-local storage only. A SAN datastore is mounted by every host of the
+            cluster and reported by each of them with the same UUID, so it would be polled N times
+            and raise N identical problems. Shared datastores are monitored by a separate template:
+            exclude them here with {$VFS.FS.FSUUID.NOT_MATCHES}, set on the cluster host group.
+            SNMP cannot detect them automatically: hrPartitionFSIndex returns a per-device counter
+            instead of the hrFSTable index, so a datastore cannot be linked to its LUN.
+
+            ESXi SNMP has no friendly datastore name: hrStorageDescr and hrFSMountPoint both
+            return /vmfs/volumes/<uuid>, and hrFSRemoteMountPoint is empty for VMFS.
+            A JavaScript step strips the prefix into {#FSUUID}, which is used in names, tags and
+            macro contexts. Map UUIDs to datastore names with: esxcli storage filesystem list
 
             hrStorageSize is an Integer32: without "esxcli system snmp set --largestorage true"
             a datastore larger than 2 TB is reported as INT_MAX allocation units and the
             percentages below are wrong.
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  var rows = Array.isArray(data) ? data : data.data;
+                  if (!Array.isArray(rows)) {
+                      throw 'Expected an SNMP discovery array';
+                  }
+                  for (var i = 0; i < rows.length; i++) {
+                      var name = String(rows[i]['{#FSNAME}'] || '');
+                      rows[i]['{#FSUUID}'] = name.replace(/^\/vmfs\/volumes\//, '') || ('index ' + rows[i]['{#SNMPINDEX}']);
+                  }
+                  return JSON.stringify(rows);
           item_prototypes:
             - uuid: d4a1054820294135be50a7f02740188c
-              name: 'Datastore [{#FSNAME}]: Space utilization'
+              name: 'Datastore [{#FSUUID}]: Space utilization'
               type: CALCULATED
               key: 'vfs.fs.pused[storageUsedPercentage.{#SNMPINDEX}]'
               value_type: FLOAT
               units: '%'
               params: 'last(//vfs.fs.used[hrStorageUsed.{#SNMPINDEX}])/last(//vfs.fs.total[hrStorageSize.{#SNMPINDEX}])*100'
-              description: 'Space utilization in % for {#FSNAME}.'
+              description: 'Space utilization in % for datastore {#FSUUID} ({#FSNAME}).'
               tags:
                 - tag: component
                   value: storage
                 - tag: datastore
-                  value: '{#FSNAME}'
+                  value: '{#FSUUID}'
               trigger_prototypes:
                 - uuid: c0b62dcada9a4e9cb3f9b9d32cb48e11
-                  expression: 'last(/VMware ESXi 8 by SNMP/vfs.fs.pused[storageUsedPercentage.{#SNMPINDEX}])>{$VFS.FS.PUSED.MAX.CRIT:"{#FSNAME}"}'
-                  name: 'VMware ESXi: Datastore [{#FSNAME}]: Space is critically low'
-                  event_name: 'VMware ESXi: Datastore [{#FSNAME}]: Space is critically low (used > {$VFS.FS.PUSED.MAX.CRIT:"{#FSNAME}"}%)'
+                  expression: 'last(/VMware ESXi 8 by SNMP/vfs.fs.pused[storageUsedPercentage.{#SNMPINDEX}])>{$VFS.FS.PUSED.MAX.CRIT:"{#FSUUID}"}'
+                  name: 'VMware ESXi: Datastore [{#FSUUID}]: Space is critically low'
+                  event_name: 'VMware ESXi: Datastore [{#FSUUID}]: Space is critically low (used > {$VFS.FS.PUSED.MAX.CRIT:"{#FSUUID}"}%)'
                   opdata: 'Space used: {ITEM.LASTVALUE1}'
                   priority: AVERAGE
                   description: |
@@ -1115,24 +1145,28 @@ zabbix_export:
                     suspends the VMs that need to write to it.
                   manual_close: 'YES'
                   tags:
+                    - tag: datastore
+                      value: '{#FSUUID}'
                     - tag: scope
                       value: capacity
                 - uuid: 4f25adfd65804754a2d094392d4010ce
-                  expression: 'last(/VMware ESXi 8 by SNMP/vfs.fs.pused[storageUsedPercentage.{#SNMPINDEX}])>{$VFS.FS.PUSED.MAX.WARN:"{#FSNAME}"}'
-                  name: 'VMware ESXi: Datastore [{#FSNAME}]: Space is low'
-                  event_name: 'VMware ESXi: Datastore [{#FSNAME}]: Space is low (used > {$VFS.FS.PUSED.MAX.WARN:"{#FSNAME}"}%)'
+                  expression: 'last(/VMware ESXi 8 by SNMP/vfs.fs.pused[storageUsedPercentage.{#SNMPINDEX}])>{$VFS.FS.PUSED.MAX.WARN:"{#FSUUID}"}'
+                  name: 'VMware ESXi: Datastore [{#FSUUID}]: Space is low'
+                  event_name: 'VMware ESXi: Datastore [{#FSUUID}]: Space is low (used > {$VFS.FS.PUSED.MAX.WARN:"{#FSUUID}"}%)'
                   opdata: 'Space used: {ITEM.LASTVALUE1}'
                   priority: WARNING
                   description: 'Datastore usage is above the warning threshold.'
                   manual_close: 'YES'
                   dependencies:
-                    - name: 'VMware ESXi: Datastore [{#FSNAME}]: Space is critically low'
-                      expression: 'last(/VMware ESXi 8 by SNMP/vfs.fs.pused[storageUsedPercentage.{#SNMPINDEX}])>{$VFS.FS.PUSED.MAX.CRIT:"{#FSNAME}"}'
+                    - name: 'VMware ESXi: Datastore [{#FSUUID}]: Space is critically low'
+                      expression: 'last(/VMware ESXi 8 by SNMP/vfs.fs.pused[storageUsedPercentage.{#SNMPINDEX}])>{$VFS.FS.PUSED.MAX.CRIT:"{#FSUUID}"}'
                   tags:
+                    - tag: datastore
+                      value: '{#FSUUID}'
                     - tag: scope
                       value: capacity
             - uuid: 99950803f8f04ce0bc0c7ee2a2e9025c
-              name: 'Datastore [{#FSNAME}]: Total space'
+              name: 'Datastore [{#FSUUID}]: Total space'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.2.1.25.2.3.1.5.{#SNMPINDEX}]'
               key: 'vfs.fs.total[hrStorageSize.{#SNMPINDEX}]'
@@ -1149,9 +1183,9 @@ zabbix_export:
                 - tag: component
                   value: storage
                 - tag: datastore
-                  value: '{#FSNAME}'
+                  value: '{#FSUUID}'
             - uuid: c8a12777ee8245f9a756de844f96edb3
-              name: 'Datastore [{#FSNAME}]: Used space'
+              name: 'Datastore [{#FSUUID}]: Used space'
               type: SNMP_AGENT
               snmp_oid: 'get[1.3.6.1.2.1.25.2.3.1.6.{#SNMPINDEX}]'
               key: 'vfs.fs.used[hrStorageUsed.{#SNMPINDEX}]'
@@ -1168,10 +1202,10 @@ zabbix_export:
                 - tag: component
                   value: storage
                 - tag: datastore
-                  value: '{#FSNAME}'
+                  value: '{#FSUUID}'
           graph_prototypes:
             - uuid: 06acae54372a4ec7974657e830dc04d2
-              name: 'VMware ESXi: Datastore [{#FSNAME}]: Space usage'
+              name: 'VMware ESXi: Datastore [{#FSUUID}]: Space usage'
               ymin_type_1: FIXED
               graph_items:
                 - drawtype: BOLD_LINE
@@ -2012,6 +2046,9 @@ zabbix_export:
         - macro: '{$VFS.FS.FSTYPE.MATCHES}'
           value: '.*(\.4|hrStorageFixedDisk)$'
           description: 'hrStorageType of datastores.'
+        - macro: '{$VFS.FS.FSUUID.NOT_MATCHES}'
+          value: CHANGE_IF_NEEDED
+          description: 'Datastore discovery: exclude datastores by UUID. List the shared (SAN) datastores here, on the cluster host group, e.g. ^(uuid1|uuid2)$ - they are monitored by a separate template.'
         - macro: '{$VFS.FS.PUSED.MAX.CRIT}'
           value: '90'
           description: 'Datastore critical threshold (%). Accepts the mount path as context.'
